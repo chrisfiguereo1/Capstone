@@ -2,83 +2,31 @@ const mongoose = require("mongoose");
 
 const fragranceSchema = new mongoose.Schema(
   {
-    url: {
-      type: String,
-      default: ""
-    },
+    url: { type: String, default: "" },
+    name: { type: String, required: true },
+    brand: { type: String, required: true },
+    country: { type: String, default: "" },
+    gender: { type: String, default: "" },
+    year: { type: Number, default: null },
 
-    name: {
-      type: String,
-      required: true,
-      trim: true
-    },
+    ratingValue: { type: Number, default: 0 },
+    ratingCount: { type: Number, default: 0 },
 
-    brand: {
-      type: String,
-      required: true,
-      trim: true
-    },
+    perfumers: { type: [String], default: [] },
+    accords: { type: [String], default: [] },
 
-    country: {
-      type: String,
-      default: ""
-    },
+    notes: { type: [String], default: [] },
+    topNotes: { type: [String], default: [] },
+    middleNotes: { type: [String], default: [] },
+    baseNotes: { type: [String], default: [] },
 
-    gender: {
-      type: String,
-      default: ""
-    },
+    longevity: { type: String, default: "" },
+    projection: { type: String, default: "" },
+    season: { type: String, default: "" },
 
-    year: {
-      type: Number,
-      default: null
-    },
-
-    ratingValue: {
-      type: Number,
-      default: 0
-    },
-
-    ratingCount: {
-      type: Number,
-      default: 0
-    },
-
-    notes: {
-      top: {
-        type: [String],
-        default: []
-      },
-
-      middle: {
-        type: [String],
-        default: []
-      },
-
-      base: {
-        type: [String],
-        default: []
-      }
-    },
-
-    perfumers: {
-      type: [String],
-      default: []
-    },
-
-    accords: {
-      type: [String],
-      default: []
-    },
-
-    source: {
-      type: String,
-      default: "fra_cleaned"
-    }
+    source: { type: String, default: "manual" },
   },
-  {
-    timestamps: true
-  }
+  { timestamps: true }
 );
 
 module.exports = mongoose.model("Fragrance", fragranceSchema);
