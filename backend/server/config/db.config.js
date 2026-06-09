@@ -1,17 +1,21 @@
-const mongoose = require('mongoose')
-const dotenv = require('dotenv')
-dotenv.config()
+const mongoose = require("mongoose");
 
-module.exports = () => {
-    const databaseParams = {
-        useNewUrlParser: true,
-        useUnifiedTopology: true
-    }
-    try{
-        mongoose.connect(process.env.DB_URL)
-        console.log("The backend has connected to the MongoDB database.")
-    } catch(error){
-        console.log(`${error} could not connect`)
-    }
-}
+const dbConnection = async () => {
+  try {
+    mongoose.set("strictQuery", false);
 
+    if (!process.env.MONGO_URL) {
+      console.error("MONGO_URL is missing from .env");
+      process.exit(1);
+    }
+
+    await mongoose.connect(process.env.MONGO_URL);
+
+    console.log("The backend has connected to the MongoDB database.");
+  } catch (error) {
+    console.error("MongoDB Connection Error:", error);
+    process.exit(1);
+  }
+};
+
+module.exports = dbConnection;
