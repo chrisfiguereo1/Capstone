@@ -2,62 +2,63 @@ require("dotenv").config();
 
 const mongoose = require("mongoose");
 const fs = require("fs");
+const path = require("path");
 const csv = require("csv-parser");
 
 const Fragrance = require("../models/fragrance");
 
+mongoose.set("strictQuery", false);
+
+const csvPath = path.join(__dirname, "../data/fra_cleaned.csv");
+
+function splitList(value) {
+  if (!value) return [];
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function toNumber(value) {
+  if (!value) return 0;
+  return Number(String(value).replace(",", "."));
+}
+
 async function importFragrances() {
   try {
-    // Connect to MongoDB
-    await mongoose.connect(process.env.MONGO_URL);
+    console.log("CSV path:", csvPath);
 
+    if (!fs.existsSync(csvPath)) {
+      console.log("CSV file not found");
+      process.exit(1);
+    }
+
+    await mongoose.connect(process.env.MONGO_URL);
     console.log("Connected to MongoDB");
 
     const fragrances = [];
 
-    fs.createReadStream(__dirname + "/../data/fra_cleaned.csv")
-      .pipe(csv())
-
+    fs.createReadStream(csvPath)
+      .pipe(csv({ separator: ";" }))
       .on("data", (row) => {
         fragrances.push({
           url: row.url || "",
-
           name: row.Perfume || "",
-
           brand: row.Brand || "",
-
           country: row.Country || "",
-
           gender: row.Gender || "",
-
           year: row.Year ? Number(row.Year) : null,
 
-          ratingValue: row["Rating Value"]
-            ? Number(row["Rating Value"])
-            : 0,
-
-          ratingCount: row["Rating Count"]
-            ? Number(row["Rating Count"])
-            : 0,
+          ratingValue: toNumber(row["Rating Value"]),
+          ratingCount: toNumber(row["Rating Count"]),
 
           notes: {
-            top: row.Top
-              ? row.Top.split(",").map((note) => note.trim())
-              : [],
-
-            middle: row.Middle
-              ? row.Middle.split(",").map((note) => note.trim())
-              : [],
-
-            base: row.Base
-              ? row.Base.split(",").map((note) => note.trim())
-              : [],
+            top: splitList(row.Top),
+            middle: splitList(row.Middle),
+            base: splitList(row.Base),
           },
 
-          perfumers: [
-            row.Perfumer1,
-            row.Perfumer2,
-          ].filter(Boolean),
+          perfumers: [row.Perfumer1, row.Perfumer2].filter(Boolean),
 
           accords: [
             row.mainaccord1,
@@ -69,35 +70,33 @@ async function importFragrances() {
 
           source: "fra_cleaned",
         });
-      })
 
+        if (fragrances.length % 1000 === 0) {
+          console.log(`Read ${fragrances.length} rows...`);
+        }
+      })
       .on("end", async () => {
         try {
-          console.log(
-            `Found ${fragrances.length} fragrances to import`
-          );
+          console.log(`Finished reading CSV. Total: ${fragrances.length}`);
 
-          // Remove old fragrance data
           await Fragrance.deleteMany({});
+          console.log("Deleted old fragrance documents");
 
-          // Insert all fragrances
-          await Fragrance.insertMany(fragrances);
-
-          console.log(
-            `Successfully imported ${fragrances.length} fragrances`
-          );
+          await Fragrance.insertMany(fragrances, { ordered: false });
+          console.log(`Imported ${fragrances.length} fragrances`);
         } catch (error) {
           console.error("Import Error:", error);
         } finally {
           await mongoose.connection.close();
           console.log("MongoDB connection closed");
+          process.exit(0);
         }
       })
-
-      .on("error", (error) => {
+      .on("error", async (error) => {
         console.error("CSV Read Error:", error);
+        await mongoose.connection.close();
+        process.exit(1);
       });
-
   } catch (error) {
     console.error("MongoDB Connection Error:", error);
     process.exit(1);

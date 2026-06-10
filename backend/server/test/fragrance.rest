@@ -1,23 +1,24 @@
 
-
-### Get all fragrances
-GET http://localhost:8081/api/fragrances
-
-###
+### Add one test fragrance
 POST http://localhost:8081/api/fragrances
 Content-Type: application/json
 
 {
-  "name": "Dior Sauvage",
-  "brand": "Dior",
-  "gender": "Men",
-  "year": 2015,
-  "notes": ["Bergamot", "Pepper", "Ambroxan"],
-  "topNotes": ["Calabrian Bergamot", "Pepper"],
-  "middleNotes": ["Sichuan Pepper", "Lavender", "Pink Pepper"],
-  "baseNotes": ["Ambroxan", "Cedar", "Labdanum"],
-  "accords": ["Fresh Spicy", "Citrus", "Amber", "Aromatic"],
-  "longevity": "8-10 hours",
-  "projection": "Strong",
-  "season": "Fall/Winter"
+  "name": "Test Fragrance",
+  "brand": "Test Brand",
+  "country": "USA",
+  "gender": "unisex",
+  "year": 2026,
+  "notes": {
+    "top": ["citrus"],
+    "middle": ["lavender"],
+    "base": ["vanilla"]
+  },
+  "accords": ["fresh", "sweet"],
+  "source": "test"
 }
+
+###
+
+### Get fragrances again and confirm test one appears
+GET http://localhost:8081/api/fragrances
