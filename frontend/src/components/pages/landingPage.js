@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
@@ -8,6 +9,8 @@ const Landingpage = () => {
   const [fragrances, setFragrances] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+
+  const navigate = useNavigate();
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -19,9 +22,7 @@ const Landingpage = () => {
       setSearched(true);
 
       const response = await fetch(
-        `http://localhost:8081/api/fragrances/search?q=${encodeURIComponent(
-          search
-        )}`
+        `http://localhost:8081/api/fragrances/search?q=${encodeURIComponent(search)}`
       );
 
       const data = await response.json();
@@ -42,9 +43,7 @@ const Landingpage = () => {
       setSearched(true);
 
       const response = await fetch(
-        `http://localhost:8081/api/fragrances/search?q=${encodeURIComponent(
-          value
-        )}`
+        `http://localhost:8081/api/fragrances/search?q=${encodeURIComponent(value)}`
       );
 
       const data = await response.json();
@@ -138,7 +137,11 @@ const Landingpage = () => {
 
             <div style={styles.grid}>
               {fragrances.map((fragrance) => (
-                <Card key={fragrance._id} style={styles.card}>
+                <Card
+                  key={fragrance._id}
+                  style={styles.card}
+                  onClick={() => navigate(`/fragrance/${fragrance._id}`)}
+                >
                   <Card.Body>
                     <div style={styles.bottleBox}>🧴</div>
 
@@ -346,6 +349,8 @@ const styles = {
     borderRadius: "22px",
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
     overflow: "hidden",
+    cursor: "pointer",
+    transition: "transform 0.2s ease, box-shadow 0.2s ease",
   },
 
   bottleBox: {
