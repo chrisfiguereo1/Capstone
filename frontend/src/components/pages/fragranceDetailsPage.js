@@ -12,8 +12,15 @@ const FragranceDetailsPage = () => {
 
   useEffect(() => {
     fetch(`http://localhost:8081/api/fragrances/${id}`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error("Fragrance could not be found.");
+        }
+
+        return res.json();
+      })
       .then((data) => {
+        console.log("Fragrance data:", data);
         setFragrance(data);
         setLoading(false);
       })
@@ -37,35 +44,72 @@ const FragranceDetailsPage = () => {
         <div style={styles.overlay}></div>
 
         <div style={styles.heroContent}>
-          <Button style={styles.backButton} onClick={() => navigate("/")}>
+          <Button
+            style={styles.backButton}
+            onClick={() => navigate("/")}
+          >
             ← Back to Search
           </Button>
 
-          <div style={styles.bottleBox}>🧴</div>
+          <div style={styles.bottleBox}>
+            {fragrance.imageUrl ? (
+              <img
+                src={fragrance.imageUrl}
+                alt={`${fragrance.brand || ""} ${
+                  fragrance.name || "Fragrance"
+                }`}
+                style={styles.bottleImage}
+                onError={(event) => {
+                  event.currentTarget.style.display = "none";
+                  event.currentTarget.nextElementSibling.style.display =
+                    "flex";
+                }}
+              />
+            ) : null}
 
-          <p style={styles.badge}>{fragrance.brand || "Unknown Brand"}</p>
+            <div
+              style={{
+                ...styles.imagePlaceholder,
+                display: fragrance.imageUrl ? "none" : "flex",
+              }}
+            >
+              🧴
+            </div>
+          </div>
+
+          <p style={styles.badge}>
+            {fragrance.brand || "Unknown Brand"}
+          </p>
 
           <h1 style={styles.title}>{fragrance.name}</h1>
 
           <p style={styles.subtitle}>
             {fragrance.gender || "Unknown"} fragrance
-            {fragrance.year ? ` • Released in ${fragrance.year}` : ""}
+            {fragrance.year
+              ? ` • Released in ${fragrance.year}`
+              : ""}
           </p>
 
           <div style={styles.heroStats}>
-            <div>
-              <strong>{fragrance.ratingValue || "N/A"}</strong>
-              <span>Rating</span>
+            <div style={styles.statBox}>
+              <strong style={styles.statValue}>
+                {fragrance.ratingValue || "N/A"}
+              </strong>
+              <span style={styles.statLabel}>Rating</span>
             </div>
 
-            <div>
-              <strong>{fragrance.ratingCount || 0}</strong>
-              <span>Votes</span>
+            <div style={styles.statBox}>
+              <strong style={styles.statValue}>
+                {fragrance.ratingCount || 0}
+              </strong>
+              <span style={styles.statLabel}>Votes</span>
             </div>
 
-            <div>
-              <strong>{fragrance.country || "N/A"}</strong>
-              <span>Country</span>
+            <div style={styles.statBox}>
+              <strong style={styles.statValue}>
+                {fragrance.country || "N/A"}
+              </strong>
+              <span style={styles.statLabel}>Country</span>
             </div>
           </div>
         </div>
@@ -127,27 +171,34 @@ const FragranceDetailsPage = () => {
 
         <Card style={styles.sectionCard}>
           <Card.Body>
-            <h2 style={styles.sectionTitle}>Fragrance Details</h2>
+            <h2 style={styles.sectionTitle}>
+              Fragrance Details
+            </h2>
 
             <div style={styles.detailsGrid}>
               <p>
-                <strong>Brand:</strong> {fragrance.brand || "N/A"}
+                <strong>Brand:</strong>{" "}
+                {fragrance.brand || "N/A"}
               </p>
 
               <p>
-                <strong>Name:</strong> {fragrance.name || "N/A"}
+                <strong>Name:</strong>{" "}
+                {fragrance.name || "N/A"}
               </p>
 
               <p>
-                <strong>Gender:</strong> {fragrance.gender || "N/A"}
+                <strong>Gender:</strong>{" "}
+                {fragrance.gender || "N/A"}
               </p>
 
               <p>
-                <strong>Year:</strong> {fragrance.year || "N/A"}
+                <strong>Year:</strong>{" "}
+                {fragrance.year || "N/A"}
               </p>
 
               <p>
-                <strong>Country:</strong> {fragrance.country || "N/A"}
+                <strong>Country:</strong>{" "}
+                {fragrance.country || "N/A"}
               </p>
 
               <p>
@@ -204,6 +255,7 @@ const styles = {
   heroContent: {
     position: "relative",
     zIndex: 1,
+    width: "100%",
     maxWidth: "900px",
     textAlign: "center",
     color: "white",
@@ -218,17 +270,33 @@ const styles = {
   },
 
   bottleBox: {
-    width: "150px",
-    height: "150px",
+    width: "210px",
+    height: "240px",
     borderRadius: "32px",
     background: "linear-gradient(135deg, #f5e6d3, #fff8ef)",
     color: "#2b1b13",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontSize: "72px",
     margin: "0 auto 25px",
+    padding: "18px",
+    overflow: "hidden",
     boxShadow: "0 20px 50px rgba(0,0,0,0.22)",
+  },
+
+  bottleImage: {
+    width: "100%",
+    height: "100%",
+    display: "block",
+    objectFit: "contain",
+  },
+
+  imagePlaceholder: {
+    width: "100%",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "72px",
   },
 
   badge: {
@@ -266,6 +334,25 @@ const styles = {
     margin: "0 auto",
   },
 
+  statBox: {
+    display: "flex",
+    flexDirection: "column",
+    padding: "14px",
+    backgroundColor: "rgba(255,255,255,0.1)",
+    border: "1px solid rgba(255,255,255,0.18)",
+    borderRadius: "16px",
+  },
+
+  statValue: {
+    fontSize: "18px",
+  },
+
+  statLabel: {
+    marginTop: "4px",
+    fontSize: "13px",
+    color: "rgba(255,255,255,0.75)",
+  },
+
   content: {
     padding: "45px 8% 80px",
     marginTop: "-45px",
@@ -288,7 +375,8 @@ const styles = {
 
   notesGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gridTemplateColumns:
+      "repeat(auto-fit, minmax(220px, 1fr))",
     gap: "18px",
   },
 
@@ -316,7 +404,8 @@ const styles = {
 
   detailsGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+    gridTemplateColumns:
+      "repeat(auto-fit, minmax(240px, 1fr))",
     gap: "10px",
   },
 

@@ -21,6 +21,11 @@ const fragranceSchema = new mongoose.Schema(
     perfumers: { type: [String], default: [] },
     accords: { type: [String], default: [] },
 
+    // 👇 Add these
+    imageUrl: { type: String, default: "" },
+    imagePublicId: { type: String, default: "" },
+    imageSource: { type: String, default: "" },
+
     source: { type: String, default: "fra_cleaned" },
   },
   { timestamps: true }
