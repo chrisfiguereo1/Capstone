@@ -7,10 +7,11 @@ import Row from 'react-bootstrap/Row';
 import axios from 'axios'
 import { Link, useNavigate } from 'react-router-dom'
 import getUserInfo from '../../utilities/decodeJwt';
+import API_URL from '../../utilities/api';
 
 const EditUserPage = () =>{
 
-  const url = `${process.env.REACT_APP_BACKEND_SERVER_URI}/user/editUser`;
+  const url = `${API_URL}/user/editUser`;
   const navigate = useNavigate();
 
   // form validation checks

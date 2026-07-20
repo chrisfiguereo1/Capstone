@@ -2,10 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
+import API_URL from "../../utilities/api";
 
-const API_URL =
-  process.env.REACT_APP_API_URL || "http://localhost:8081";
-  
 const FragranceDetailsPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();

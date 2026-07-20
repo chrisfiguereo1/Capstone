@@ -1,7 +1,6 @@
 require("dotenv").config();
 
 const express = require("express");
-const app = express();
 const cors = require("cors");
 
 const loginRoute = require("./routes/userLogin");
@@ -13,13 +12,18 @@ const editUser = require("./routes/userEditUser");
 const deleteUser = require("./routes/userDeleteAll");
 const fragranceRoutes = require("./routes/fragranceRoutes");
 
+const app = express();
 
-const SERVER_PORT = 8081;
+const SERVER_PORT = process.env.PORT || 8081;
 
 dbConnection();
 
 app.use(cors({ origin: "*" }));
 app.use(express.json());
+
+app.get("/", (req, res) => {
+  res.send("WaterScent backend is running.");
+});
 
 app.use("/user", loginRoute);
 app.use("/user", registerRoute);

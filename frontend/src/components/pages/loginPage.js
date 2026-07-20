@@ -4,10 +4,11 @@ import axios from "axios";
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
 import getUserInfo from "../../utilities/decodeJwt";
+import API_URL from "../../utilities/api";
 
 const PRIMARY_COLOR = "#cc5c99";
 const SECONDARY_COLOR = '#0c0c1f'
-const url = `${process.env.REACT_APP_BACKEND_SERVER_URI}/user/login`;
+const url = `${API_URL}/user/login`;
 
 const Login = () => {
   const [user, setUser] = useState(null)

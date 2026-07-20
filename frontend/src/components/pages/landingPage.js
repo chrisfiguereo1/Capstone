@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
+import API_URL from "../../utilities/api";
 
 const Landingpage = () => {
   const [search, setSearch] = useState("");
@@ -22,7 +23,7 @@ const Landingpage = () => {
       setSearched(true);
 
       const response = await fetch(
-        `http://localhost:8081/api/fragrances/search?q=${encodeURIComponent(search)}`
+        `${API_URL}/api/fragrances/search?q=${encodeURIComponent(search)}`
       );
 
       const data = await response.json();
@@ -43,7 +44,7 @@ const Landingpage = () => {
       setSearched(true);
 
       const response = await fetch(
-        `http://localhost:8081/api/fragrances/search?q=${encodeURIComponent(value)}`
+        `${API_URL}/api/fragrances/search?q=${encodeURIComponent(value)}`
       );
 
       const data = await response.json();
