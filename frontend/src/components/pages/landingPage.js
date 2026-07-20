@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
@@ -10,8 +10,46 @@ const Landingpage = () => {
   const [fragrances, setFragrances] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const accessToken = localStorage.getItem("accessToken");
+
+    if (!accessToken) {
+      setCurrentUser(null);
+      return;
+    }
+
+    fetch(`${API_URL}/user/profile`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+      .then((response) => {
+        if (response.status === 401) {
+          localStorage.removeItem("accessToken");
+          setCurrentUser(null);
+          return null;
+        }
+
+        if (!response.ok) {
+          throw new Error("Unable to load user profile.");
+        }
+
+        return response.json();
+      })
+      .then((user) => {
+        if (user) {
+          setCurrentUser(user);
+        }
+      })
+      .catch((error) => {
+        console.error("Profile error:", error);
+        setCurrentUser(null);
+      });
+  }, []);
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -65,7 +103,11 @@ const Landingpage = () => {
         <div style={styles.heroContent}>
           <p style={styles.badge}>WaterScent Fragrance Finder</p>
 
-          <h1 style={styles.title}>Find Your Next Signature Scent</h1>
+          <h1 style={styles.title}>
+            {currentUser?.username
+              ? `Welcome, ${currentUser.username}! Looking for a scent?`
+              : "Welcome! Looking for a scent?"}
+          </h1>
 
           <p style={styles.subtitle}>
             Search through thousands of fragrances by name, brand, accord, or

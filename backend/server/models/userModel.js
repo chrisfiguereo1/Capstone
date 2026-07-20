@@ -18,12 +18,21 @@ const newUserSchema = new mongoose.Schema(
       type: String,
       min : 8
     },
+    bio: {
+      type: String,
+      default: "",
+      maxlength: 300,
+    },
+    profileImage: {
+      type: String,
+      default: "",
+    },
     date: {
       type: Date,
       default: Date.now,
     },
   },
-  { collection: "users" }
+  { collection: "users", timestamps: true }
 );
 
 module.exports = mongoose.model('users', newUserSchema)

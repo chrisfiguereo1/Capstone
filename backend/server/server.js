@@ -11,6 +11,7 @@ const dbConnection = require("./config/db.config");
 const editUser = require("./routes/userEditUser");
 const deleteUser = require("./routes/userDeleteAll");
 const fragranceRoutes = require("./routes/fragranceRoutes");
+const profileRoute = require("./routes/userProfile");
 
 const app = express();
 
@@ -31,6 +32,7 @@ app.use("/user", getAllUsersRoute);
 app.use("/user", getUserByIdRoute);
 app.use("/user", editUser);
 app.use("/user", deleteUser);
+app.use("/user", profileRoute);
 app.use("/api/fragrances", fragranceRoutes);
 
 app.listen(SERVER_PORT, () => {

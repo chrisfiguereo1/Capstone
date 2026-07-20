@@ -8,6 +8,8 @@ import API_URL from "../../utilities/api";
 
 const PRIMARY_COLOR = "#cc5c99";
 const SECONDARY_COLOR = '#0c0c1f'
+const PAGE_BACKGROUND =
+  "radial-gradient(circle at top left, rgba(243,215,183,0.18) 0%, transparent 30%), linear-gradient(135deg, #140c08 0%, #2b1b13 52%, #7b5136 100%)";
 const url = `${API_URL}/user/login`;
 
 const Login = () => {
@@ -20,15 +22,35 @@ const Login = () => {
   const navigate = useNavigate();
 
   let labelStyling = {
-    color: PRIMARY_COLOR,
+    color: light ? PRIMARY_COLOR : "#f4dcc1",
     fontWeight: "bold",
     textDecoration: "none",
   };
-  let backgroundStyling = { background: bgColor };
+  let backgroundStyling = { background: light ? bgColor : PAGE_BACKGROUND };
+  let formCardStyling = {
+    background: light ? "white" : "rgba(20, 12, 8, 0.72)",
+    border: light ? "1px solid #efe1cf" : "1px solid rgba(244, 220, 193, 0.18)",
+    borderRadius: "26px",
+    boxShadow: light ? "0 18px 45px rgba(35, 25, 18, 0.12)" : "0 24px 60px rgba(0, 0, 0, 0.28)",
+    padding: "32px",
+  };
+  let inputStyling = {
+    backgroundColor: "#fff8ef",
+    border: "1px solid #efe1cf",
+    borderRadius: "14px",
+    color: "#2b1b13",
+    padding: "11px 14px",
+  };
+  let formTextStyling = {
+    color: light ? "#6c5b4d" : "rgba(255,255,255,0.72)",
+  };
   let buttonStyling = {
-    background: PRIMARY_COLOR,
+    background: "#fff8ef",
     borderStyle: "none",
-    color: bgColor,
+    borderRadius: "999px",
+    color: "#2b1b13",
+    fontWeight: "800",
+    padding: "10px 22px",
   };
 
   const handleChange = ({ currentTarget: input }) => {
@@ -82,7 +104,7 @@ const Login = () => {
             className="row d-flex justify-content-center align-items-center h-100 "
             style={backgroundStyling}>
             <div className="col-md-8 col-lg-6 col-xl-4 offset-xl-1">
-              <Form>
+              <Form style={formCardStyling}>
                 <Form.Group className="mb-3" controlId="formBasicEmail">
                   <Form.Label style={labelStyling}>Username</Form.Label>
                   <Form.Control
@@ -90,8 +112,9 @@ const Login = () => {
                     name="username"
                     onChange={handleChange}
                     placeholder="Enter username"
+                    style={inputStyling}
                   />
-                  <Form.Text className="text-muted">
+                  <Form.Text style={formTextStyling}>
                     We just might sell your data
                   </Form.Text>
                 </Form.Group>
@@ -102,10 +125,11 @@ const Login = () => {
                     name="password"
                     placeholder="Password"
                     onChange={handleChange}
+                    style={inputStyling}
                   />
                 </Form.Group>
                 <Form.Group className="mb-3" controlId="formBasicCheckbox">
-                  <Form.Text className="text-muted pt-1">
+                  <Form.Text style={formTextStyling}>
                     Dont have an account?
                     <span>
                       <Link to="/signup" style={labelStyling}> Sign up
@@ -120,7 +144,7 @@ const Login = () => {
                     id="flexSwitchCheckDefault"
                     onChange={() => { setLight(!light) }}
                   />
-                  <label className="form-check-label text-muted" htmlFor="flexSwitchCheckDefault">
+                  <label className="form-check-label" htmlFor="flexSwitchCheckDefault" style={formTextStyling}>
                     {bgText}
                   </label>
                 </div>

@@ -1,21 +1,25 @@
 const express = require("express");
 const router = express.Router();
-const z = require('zod')
 const bcrypt = require("bcrypt");
 const { newUserValidation } = require('../models/userValidator')
 const newUserModel = require('../models/userModel')
 
 router.post('/signup', async (req, res) => {
+    try {
     const { error } = newUserValidation(req.body);
     console.log(error)
     if (error) return res.status(400).send({ message: error.errors[0].message });
 
     const { username, email, password } = req.body
 
-    //check if email already exists
+    //check if username already exists
     const user = await newUserModel.findOne({ username: username })
     if (user)
         return res.status(409).send({ message: "Username is taken, pick another" })
+
+    const emailExists = await newUserModel.findOne({ email: email })
+    if (emailExists)
+        return res.status(409).send({ message: "Email is already registered" })
 
     //generates the hash
     const generateHash = await bcrypt.genSalt(Number(10))
@@ -30,10 +34,10 @@ router.post('/signup', async (req, res) => {
         password: hashPassword,
     });
 
-   
-    try {
         const saveNewUser = await createUser.save();
-        res.send(saveNewUser);
+        const userResponse = saveNewUser.toObject();
+        delete userResponse.password;
+        res.send(userResponse);
     } catch (error) {
         res.status(400).send({ message: "Error trying to create new user" });
     }
