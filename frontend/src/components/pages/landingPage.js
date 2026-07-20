@@ -103,11 +103,13 @@ const Landingpage = () => {
         <div style={styles.heroContent}>
           <p style={styles.badge}>WaterScent Fragrance Finder</p>
 
-          <h1 style={styles.title}>
+          <p style={styles.welcomeText}>
             {currentUser?.username
-              ? `Welcome, ${currentUser.username}! Looking for a scent?`
-              : "Welcome! Looking for a scent?"}
-          </h1>
+              ? `Welcome, ${currentUser.username}`
+              : "Welcome"}
+          </p>
+
+          <h1 style={styles.title}>Looking for a scent?</h1>
 
           <p style={styles.subtitle}>
             Search through thousands of fragrances by name, brand, accord, or
@@ -297,6 +299,14 @@ const styles = {
     fontWeight: "800",
     lineHeight: "1.05",
     marginBottom: "20px",
+  },
+
+  welcomeText: {
+    color: "rgba(255,255,255,0.82)",
+    fontSize: "16px",
+    fontWeight: "700",
+    marginBottom: "10px",
+    textAlign: "center",
   },
 
   subtitle: {
