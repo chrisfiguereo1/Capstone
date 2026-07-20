@@ -3,6 +3,9 @@ import { useParams, useNavigate } from "react-router-dom";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 
+const API_URL =
+  process.env.REACT_APP_API_URL || "http://localhost:8081";
+  
 const FragranceDetailsPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -11,12 +14,12 @@ const FragranceDetailsPage = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`http://localhost:8081/api/fragrances/${id}`)
+    fetch(`${API_URL}/api/fragrances/${id}`)
       .then((res) => {
         if (!res.ok) {
           throw new Error("Fragrance could not be found.");
         }
-
+  
         return res.json();
       })
       .then((data) => {
