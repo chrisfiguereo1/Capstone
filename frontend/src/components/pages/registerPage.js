@@ -46,8 +46,7 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const { data: res } = await axios.post(url, data);
-      const { accessToken } = res;
+      await axios.post(url, data);
 
       // Show confirmation window
       window.alert("Registration successful! Please log in.");
