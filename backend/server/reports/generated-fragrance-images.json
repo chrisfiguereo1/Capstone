@@ -1,0 +1,186 @@
+{
+  "generatedAt": "2026-07-27T07:39:51.324Z",
+  "dryRun": false,
+  "limit": 10,
+  "overwriteGenerated": false,
+  "summary": {
+    "fragrancesScanned": 24066,
+    "eligible": 23641,
+    "generated": 10,
+    "skippedExistingImage": 1,
+    "skippedAmbiguous": 424,
+    "failed": 0
+  },
+  "results": [
+    {
+      "fragranceId": "6a28e95e06bfc109a6548d88",
+      "brand": "mugler",
+      "name": "alien",
+      "year": 2005,
+      "accords": [
+        "white floral",
+        "amber",
+        "floral"
+      ],
+      "normalizedKey": "mugleralien",
+      "outputFilename": "mugleralien.svg",
+      "outputPath": "/Users/chrisfiguereo/Downloads/Capstone/Capstone/backend/server/fragrance-images/generated/mugleralien.svg",
+      "status": "GENERATED",
+      "error": null,
+      "timestamp": "2026-07-27T07:39:53.155Z"
+    },
+    {
+      "fragranceId": "6a28e95d06bfc109a654622a",
+      "brand": "mugler",
+      "name": "angel",
+      "year": 1992,
+      "accords": [
+        "sweet",
+        "patchouli",
+        "fruity"
+      ],
+      "normalizedKey": "muglerangel",
+      "outputFilename": "muglerangel.svg",
+      "outputPath": "/Users/chrisfiguereo/Downloads/Capstone/Capstone/backend/server/fragrance-images/generated/muglerangel.svg",
+      "status": "GENERATED",
+      "error": null,
+      "timestamp": "2026-07-27T07:39:53.156Z"
+    },
+    {
+      "fragranceId": "6a28e95e06bfc109a6547837",
+      "brand": "dolce-gabbana",
+      "name": "light-blue",
+      "year": 2001,
+      "accords": [
+        "citrus",
+        "woody",
+        "fresh"
+      ],
+      "normalizedKey": "dolcegabbanalightblue",
+      "outputFilename": "dolcegabbanalightblue.svg",
+      "outputPath": "/Users/chrisfiguereo/Downloads/Capstone/Capstone/backend/server/fragrance-images/generated/dolcegabbanalightblue.svg",
+      "status": "GENERATED",
+      "error": null,
+      "timestamp": "2026-07-27T07:39:53.156Z"
+    },
+    {
+      "fragranceId": "6a28e95e06bfc109a6549e0f",
+      "brand": "chanel",
+      "name": "coco-mademoiselle",
+      "year": 2001,
+      "accords": [
+        "citrus",
+        "woody",
+        "patchouli"
+      ],
+      "normalizedKey": "chanelcocomademoiselle",
+      "outputFilename": "chanelcocomademoiselle.svg",
+      "outputPath": "/Users/chrisfiguereo/Downloads/Capstone/Capstone/backend/server/fragrance-images/generated/chanelcocomademoiselle.svg",
+      "status": "GENERATED",
+      "error": null,
+      "timestamp": "2026-07-27T07:39:53.156Z"
+    },
+    {
+      "fragranceId": "6a28e95d06bfc109a65465d0",
+      "brand": "lancome",
+      "name": "la-vie-est-belle",
+      "year": 2012,
+      "accords": [
+        "sweet",
+        "vanilla",
+        "fruity"
+      ],
+      "normalizedKey": "lancomelavieestbelle",
+      "outputFilename": "lancomelavieestbelle.svg",
+      "outputPath": "/Users/chrisfiguereo/Downloads/Capstone/Capstone/backend/server/fragrance-images/generated/lancomelavieestbelle.svg",
+      "status": "GENERATED",
+      "error": null,
+      "timestamp": "2026-07-27T07:39:53.156Z"
+    },
+    {
+      "fragranceId": "6a28e95e06bfc109a6548199",
+      "brand": "tom-ford",
+      "name": "black-orchid",
+      "year": 2006,
+      "accords": [
+        "warm spicy",
+        "earthy",
+        "woody"
+      ],
+      "normalizedKey": "tomfordblackorchid",
+      "outputFilename": "tomfordblackorchid.svg",
+      "outputPath": "/Users/chrisfiguereo/Downloads/Capstone/Capstone/backend/server/fragrance-images/generated/tomfordblackorchid.svg",
+      "status": "GENERATED",
+      "error": null,
+      "timestamp": "2026-07-27T07:39:53.156Z"
+    },
+    {
+      "fragranceId": "6a28e95e06bfc109a6548469",
+      "brand": "yves-saint-laurent",
+      "name": "black-opium",
+      "year": 2014,
+      "accords": [
+        "vanilla",
+        "coffee",
+        "sweet"
+      ],
+      "normalizedKey": "yvessaintlaurentblackopium",
+      "outputFilename": "yvessaintlaurentblackopium.svg",
+      "outputPath": "/Users/chrisfiguereo/Downloads/Capstone/Capstone/backend/server/fragrance-images/generated/yvessaintlaurentblackopium.svg",
+      "status": "GENERATED",
+      "error": null,
+      "timestamp": "2026-07-27T07:39:53.156Z"
+    },
+    {
+      "fragranceId": "6a28e95e06bfc109a6549a15",
+      "brand": "dior",
+      "name": "hypnotic-poison",
+      "year": 1998,
+      "accords": [
+        "vanilla",
+        "sweet",
+        "almond"
+      ],
+      "normalizedKey": "diorhypnoticpoison",
+      "outputFilename": "diorhypnoticpoison.svg",
+      "outputPath": "/Users/chrisfiguereo/Downloads/Capstone/Capstone/backend/server/fragrance-images/generated/diorhypnoticpoison.svg",
+      "status": "GENERATED",
+      "error": null,
+      "timestamp": "2026-07-27T07:39:53.156Z"
+    },
+    {
+      "fragranceId": "6a28e95e06bfc109a6547151",
+      "brand": "dior",
+      "name": "j-adore",
+      "year": 1999,
+      "accords": [
+        "white floral",
+        "floral",
+        "fruity"
+      ],
+      "normalizedKey": "diorjadore",
+      "outputFilename": "diorjadore.svg",
+      "outputPath": "/Users/chrisfiguereo/Downloads/Capstone/Capstone/backend/server/fragrance-images/generated/diorjadore.svg",
+      "status": "GENERATED",
+      "error": null,
+      "timestamp": "2026-07-27T07:39:53.156Z"
+    },
+    {
+      "fragranceId": "6a28e95e06bfc109a6547d2f",
+      "brand": "dior",
+      "name": "sauvage",
+      "year": 2015,
+      "accords": [
+        "fresh spicy",
+        "amber",
+        "citrus"
+      ],
+      "normalizedKey": "diorsauvage",
+      "outputFilename": "diorsauvage.svg",
+      "outputPath": "/Users/chrisfiguereo/Downloads/Capstone/Capstone/backend/server/fragrance-images/generated/diorsauvage.svg",
+      "status": "GENERATED",
+      "error": null,
+      "timestamp": "2026-07-27T07:39:53.157Z"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "startedAt": "2026-07-27T08:07:12.593Z",
+  "finishedAt": "2026-07-27T08:07:13.957Z",
+  "dryRun": true,
+  "limit": 10,
+  "retryFailed": false,
+  "replaceGenerated": true,
+  "sourceMode": "real",
+  "summary": {
+    "imagesScanned": 0,
+    "eligible": 0,
+    "uploaded": 0,
+    "replacedGenerated": 0,
+    "alreadyHasImage": 0,
+    "existingRealImageProtected": 0,
+    "generatedReplacementNotRequested": 0,
+    "invalidGeneratedMetadata": 0,
+    "ambiguous": 0,
+    "invalidGeneratedFiles": 0,
+    "unmatched": 0,
+    "failed": 0,
+    "cleanupRequired": 0,
+    "skippedPreviouslyFailed": 0
+  },
+  "results": []
+}

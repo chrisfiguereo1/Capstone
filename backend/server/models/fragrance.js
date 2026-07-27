@@ -22,9 +22,15 @@ const fragranceSchema = new mongoose.Schema(
     accords: { type: [String], default: [] },
 
     // 👇 Add these
+    image: { type: String, default: null },
     imageUrl: { type: String, default: "" },
     imagePublicId: { type: String, default: "" },
     imageSource: { type: String, default: "" },
+    imageStatus: {
+      type: String,
+      enum: ["pending", "matched", "review", "not_found"],
+      default: "pending",
+    },
 
     source: { type: String, default: "fra_cleaned" },
   },

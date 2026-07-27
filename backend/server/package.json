@@ -4,6 +4,18 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "discover-image-candidates": "node utilities/discoverFragranceImageCandidates.js",
+    "generate-placeholders:dry": "node utilities/generateFragrancePlaceholderImages.js --dry-run",
+    "generate-placeholders:test": "node utilities/generateFragrancePlaceholderImages.js --limit=10",
+    "inspect-images": "node utilities/inspectFragranceImages.js",
+    "preview-image-matches": "node utilities/previewImageMatches.js",
+    "test-fragrance-matcher": "node utilities/testFragranceFinderMatcher.js",
+    "replace-generated:dry": "node utilities/bulkUploadFragranceImages.js --dry-run --source=real --replace-generated --limit=10",
+    "replace-generated:test": "node utilities/bulkUploadFragranceImages.js --source=real --replace-generated --limit=1",
+    "upload-generated:dry": "node utilities/bulkUploadFragranceImages.js --dry-run --source=generated --limit=10",
+    "upload-generated:test": "node utilities/bulkUploadFragranceImages.js --source=generated --limit=1",
+    "upload-images:dry": "node utilities/bulkUploadFragranceImages.js --dry-run --source=real",
+    "upload-images:test": "node utilities/bulkUploadFragranceImages.js --source=real --limit=1",
     "server": "nodemon server.js"
   },
   "repository": {

@@ -5,6 +5,37 @@ import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
 import API_URL from "../../utilities/api";
 
+const DEFAULT_FRAGRANCE_IMAGE =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 420" role="img" aria-label="WaterScent fragrance placeholder">
+      <defs>
+        <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#f5e6d3"/>
+          <stop offset="58%" stop-color="#fff8ef"/>
+          <stop offset="100%" stop-color="#efe1cf"/>
+        </linearGradient>
+        <linearGradient id="bottle" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#fffaf3"/>
+          <stop offset="100%" stop-color="#d8b995"/>
+        </linearGradient>
+      </defs>
+      <rect width="420" height="420" rx="28" fill="url(#background)"/>
+      <rect x="178" y="86" width="64" height="54" rx="12" fill="#7b5136" opacity="0.9"/>
+      <rect x="154" y="132" width="112" height="166" rx="34" fill="url(#bottle)" stroke="#7b5136" stroke-width="8"/>
+      <rect x="184" y="172" width="52" height="62" rx="14" fill="#fff8ef" opacity="0.86"/>
+      <text x="210" y="342" text-anchor="middle" fill="#6d4328" font-family="Arial, sans-serif" font-size="28" font-weight="700">WaterScent</text>
+    </svg>
+  `);
+
+const getFragranceImage = (fragrance) =>
+  fragrance?.imageUrl || fragrance?.image || DEFAULT_FRAGRANCE_IMAGE;
+
+const handleImageError = (event) => {
+  event.currentTarget.onerror = null;
+  event.currentTarget.src = DEFAULT_FRAGRANCE_IMAGE;
+};
+
 const Landingpage = () => {
   const [search, setSearch] = useState("");
   const [fragrances, setFragrances] = useState([]);
@@ -188,7 +219,17 @@ const Landingpage = () => {
                   onClick={() => navigate(`/fragrance/${fragrance._id}`)}
                 >
                   <Card.Body>
-                    <div style={styles.bottleBox}>🧴</div>
+                    <div style={styles.imageWrap}>
+                      <img
+                        src={getFragranceImage(fragrance)}
+                        alt={`${fragrance.name || "Fragrance"} by ${
+                          fragrance.brand || "Unknown brand"
+                        }`}
+                        loading="lazy"
+                        onError={handleImageError}
+                        style={styles.bottleImage}
+                      />
+                    </div>
 
                     <Card.Title style={styles.cardTitle}>
                       {fragrance.name || "Unknown Fragrance"}
@@ -406,15 +447,25 @@ const styles = {
     transition: "transform 0.2s ease, box-shadow 0.2s ease",
   },
 
-  bottleBox: {
-    height: "145px",
+  imageWrap: {
+    width: "100%",
+    height: "220px",
     borderRadius: "18px",
     background: "linear-gradient(135deg, #f5e6d3, #fff8ef)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontSize: "54px",
+    padding: "18px",
     marginBottom: "18px",
+    overflow: "hidden",
+  },
+
+  bottleImage: {
+    width: "100%",
+    height: "100%",
+    display: "block",
+    objectFit: "contain",
+    filter: "drop-shadow(0 16px 18px rgba(43, 27, 19, 0.16))",
   },
 
   cardTitle: {

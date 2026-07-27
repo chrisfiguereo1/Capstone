@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Button from "react-bootstrap/Button";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
@@ -29,8 +29,12 @@ const FragranceDetailsPage = () => {
   const navigate = useNavigate();
 
   const [fragrance, setFragrance] = useState(null);
+  const [imageUrl, setImageUrl] = useState("");
+  const [imageLoading, setImageLoading] = useState(false);
+  const [imageMessage, setImageMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [activeAccord, setActiveAccord] = useState(null);
+  const imageLookupStarted = useRef(false);
 
   useEffect(() => {
     fetch(`${API_URL}/api/fragrances/${id}`)
@@ -44,6 +48,7 @@ const FragranceDetailsPage = () => {
       .then((data) => {
         console.log("Fragrance data:", data);
         setFragrance(data);
+        setImageUrl(data.imageUrl || data.image || "");
         setLoading(false);
       })
       .catch((error) => {
@@ -51,6 +56,55 @@ const FragranceDetailsPage = () => {
         setLoading(false);
       });
   }, [id]);
+
+  const requestFragranceImage = useCallback(async (replaceGenerated) => {
+    setImageLoading(true);
+    setImageMessage("");
+
+    try {
+      const response = await fetch(`${API_URL}/api/fragrances/${id}/image`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ replaceGenerated }),
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data.imageUrl) {
+        setImageMessage(data.message || "No matching bottle image was found.");
+        return;
+      }
+
+      setImageUrl(data.imageUrl);
+      setFragrance((current) =>
+        current
+          ? {
+              ...current,
+              image: data.imageUrl,
+              imageUrl: data.imageUrl,
+              imageSource: data.source,
+            }
+          : current
+      );
+      setImageMessage(
+        data.cached ? "Saved image loaded." : "Bottle image found and saved."
+      );
+    } catch (error) {
+      setImageMessage("Image lookup is unavailable right now.");
+    } finally {
+      setImageLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    if (!fragrance || imageUrl || imageLookupStarted.current) {
+      return;
+    }
+
+    imageLookupStarted.current = true;
+    requestFragranceImage(false);
+  }, [fragrance, imageUrl, requestFragranceImage]);
 
   if (loading) {
     return <p style={styles.status}>Loading fragrance...</p>;
@@ -152,14 +206,15 @@ const FragranceDetailsPage = () => {
 
         <section className="ws-card ws-hero" style={styles.hero}>
           <div style={styles.imagePanel}>
-            {fragrance.imageUrl ? (
+            {imageUrl ? (
               <img
-                src={fragrance.imageUrl}
+                src={imageUrl}
                 alt={`${fragrance.brand || ""} ${fragrance.name || "Fragrance"}`}
                 style={styles.bottleImage}
                 onError={(event) => {
                   event.currentTarget.style.display = "none";
                   event.currentTarget.nextElementSibling.style.display = "flex";
+                  setImageMessage("This image could not be displayed.");
                 }}
               />
             ) : null}
@@ -167,10 +222,10 @@ const FragranceDetailsPage = () => {
             <div
               style={{
                 ...styles.imagePlaceholder,
-                display: fragrance.imageUrl ? "none" : "flex",
+                display: imageUrl ? "none" : "flex",
               }}
             >
-              Fragrance
+              {imageLoading ? "Finding image..." : "Fragrance"}
             </div>
           </div>
 
@@ -194,6 +249,20 @@ const FragranceDetailsPage = () => {
               <span style={styles.ratingCopy}>
                 {fragrance.ratingCount || 0} ratings
               </span>
+            </div>
+
+            <div style={styles.imageActions}>
+              <Button
+                type="button"
+                style={styles.imageButton}
+                disabled={imageLoading}
+                onClick={() => requestFragranceImage(true)}
+              >
+                {imageLoading ? "Finding..." : "Find real bottle image"}
+              </Button>
+              {imageMessage && (
+                <p style={styles.imageMessage}>{imageMessage}</p>
+              )}
             </div>
           </div>
         </section>
@@ -466,6 +535,28 @@ const styles = {
     background: "#fff8ef",
     color: "#2b1b13",
     boxShadow: "0 18px 38px rgba(0, 0, 0, 0.24)",
+  },
+
+  imageActions: {
+    display: "grid",
+    gap: "10px",
+    justifyItems: "start",
+    marginTop: "18px",
+  },
+
+  imageButton: {
+    backgroundColor: "rgba(255,255,255,0.14)",
+    border: "1px solid rgba(255,255,255,0.24)",
+    borderRadius: "999px",
+    padding: "9px 16px",
+    color: "#fff8ef",
+    fontWeight: "700",
+  },
+
+  imageMessage: {
+    margin: 0,
+    color: "rgba(255,255,255,0.74)",
+    fontSize: "13px",
   },
 
   star: {

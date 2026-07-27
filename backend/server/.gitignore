@@ -3,3 +3,8 @@ config.env
 /build
 /coverage
 .env
+fragrance-images/*
+!fragrance-images/.gitkeep
+!fragrance-images/generated/
+fragrance-images/generated/*
+!fragrance-images/generated/.gitkeep

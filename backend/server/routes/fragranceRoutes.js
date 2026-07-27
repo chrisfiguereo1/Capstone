@@ -2,6 +2,38 @@ const express = require("express");
 const router = express.Router();
 
 const Fragrance = require("../models/fragrance");
+const {
+  getOrFetchFragranceImage,
+} = require("../services/fragranceImageService");
+
+const fragranceSearchFields = [
+  "name",
+  "brand",
+  "accords",
+  "notes.top",
+  "notes.middle",
+  "notes.base",
+];
+
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function buildFragranceSearchQuery(query) {
+  const tokens = query
+    .trim()
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
+
+  return {
+    $and: tokens.map((token) => ({
+      $or: fragranceSearchFields.map((field) => ({
+        [field]: { $regex: escapeRegex(token), $options: "i" },
+      })),
+    })),
+  };
+}
 
 // SEARCH fragrances
 router.get("/search", async (req, res) => {
@@ -12,16 +44,9 @@ router.get("/search", async (req, res) => {
       return res.status(200).json([]);
     }
 
-    const fragrances = await Fragrance.find({
-      $or: [
-        { name: { $regex: query, $options: "i" } },
-        { brand: { $regex: query, $options: "i" } },
-        { accords: { $regex: query, $options: "i" } },
-        { "notes.top": { $regex: query, $options: "i" } },
-        { "notes.middle": { $regex: query, $options: "i" } },
-        { "notes.base": { $regex: query, $options: "i" } },
-      ],
-    }).limit(12);
+    const fragrances = await Fragrance.find(
+      buildFragranceSearchQuery(query)
+    ).limit(12);
 
     res.status(200).json(fragrances);
   } catch (error) {
@@ -36,6 +61,44 @@ router.get("/", async (req, res) => {
     res.status(200).json(fragrances);
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+});
+
+// GET or fetch one fragrance image by ID
+router.post("/:id/image", async (req, res) => {
+  try {
+    const result = await getOrFetchFragranceImage(req.params.id, {
+      replaceGenerated: Boolean(req.body && req.body.replaceGenerated),
+    });
+
+    if (!result.ok) {
+      return res.status(result.httpStatus || 500).json({
+        imageUrl: null,
+        source: null,
+        cached: false,
+        apiCalled: Boolean(result.apiCalled),
+        status: result.status,
+        message: result.message,
+      });
+    }
+
+    res.status(200).json({
+      imageUrl: result.imageUrl,
+      source: result.source,
+      cached: Boolean(result.cached),
+      apiCalled: Boolean(result.apiCalled),
+      status: result.status,
+      message: result.message,
+    });
+  } catch (error) {
+    res.status(500).json({
+      imageUrl: null,
+      source: null,
+      cached: false,
+      apiCalled: false,
+      status: "error",
+      message: "Unable to fetch fragrance image.",
+    });
   }
 });
 
