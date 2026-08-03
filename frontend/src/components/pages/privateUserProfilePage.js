@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import Button from "react-bootstrap/Button";
 import Modal from "react-bootstrap/Modal";
 import { useNavigate } from "react-router-dom";
 import getUserInfo from "../../utilities/decodeJwt";
+import { UserContext } from "../../App";
 
 
 //link to service
@@ -11,6 +12,7 @@ import getUserInfo from "../../utilities/decodeJwt";
 const PrivateUserProfile = () => {
   const [show, setShow] = useState(false);
   const [user, setUser] = useState({})
+  const { setUser: setGlobalUser } = useContext(UserContext);
   const handleClose = () => setShow(false);
   const handleShow = () => setShow(true);
   const navigate = useNavigate();
@@ -18,7 +20,8 @@ const PrivateUserProfile = () => {
 
   // handle logout button
   const handleLogout = (async) => {
-    localStorage.clear();
+    localStorage.removeItem("accessToken");
+    setGlobalUser(undefined);
     navigate("/");
   };
 

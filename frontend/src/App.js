@@ -11,25 +11,49 @@ import HomePage from "./components/pages/homePage";
 import Login from "./components/pages/loginPage";
 import Signup from "./components/pages/registerPage";
 import PrivateUserProfile from "./components/pages/privateUserProfilePage";
-import { createContext, useState, useEffect } from "react";
+import { createContext, useState, useEffect, useMemo } from "react";
 import getUserInfo from "./utilities/decodeJwt";
 import FragranceDetailsPage from "./components/pages/fragranceDetailsPage";
 
 
-export const UserContext = createContext();
+export const UserContext = createContext({ user: undefined, setUser: () => {} });
+export const ThemeContext = createContext({
+  theme: "dark",
+  toggleTheme: () => {},
+});
 //test change
 //test again
 const App = () => {
   const [user, setUser] = useState();
+  const [theme, setTheme] = useState(
+    () => localStorage.getItem("waterscentTheme") || "dark"
+  );
 
   useEffect(() => {
     setUser(getUserInfo());
   }, []);
 
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("waterscentTheme", theme);
+  }, [theme]);
+
+  const userContextValue = useMemo(() => ({ user, setUser }), [user]);
+  const themeContextValue = useMemo(
+    () => ({
+      theme,
+      toggleTheme: () =>
+        setTheme((currentTheme) =>
+          currentTheme === "dark" ? "light" : "dark"
+        ),
+    }),
+    [theme]
+  );
+
   return (
-    <>
-      <Navbar />
-      <UserContext.Provider value={user}>
+    <ThemeContext.Provider value={themeContextValue}>
+      <UserContext.Provider value={userContextValue}>
+        <Navbar />
         <Routes>
           <Route exact path="/" element={<LandingPage />} />
           <Route exact path="/home" element={<HomePage />} />
@@ -39,7 +63,7 @@ const App = () => {
           <Route path="/fragrance/:id" element={<FragranceDetailsPage />} />
         </Routes>
       </UserContext.Provider>
-    </>
+    </ThemeContext.Provider>
   );
 };
 

@@ -1,11 +1,14 @@
 import React from "react";
 import ReactDOM from "react-dom";
-import './index.css'
 import App from "./App";
 import 'bootstrap/dist/css/bootstrap.min.css';
+import './index.css'
 
 import { BrowserRouter } from "react-router-dom";
 // Test Change
+
+const savedTheme = localStorage.getItem("waterscentTheme") || "dark";
+document.documentElement.setAttribute("data-theme", savedTheme);
 
 ReactDOM.render(
   // <React.StrictMode>

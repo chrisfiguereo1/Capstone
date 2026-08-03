@@ -1,29 +1,77 @@
-import React from "react";
+import React, { useContext } from "react";
 import Container from 'react-bootstrap/Container';
 import Nav from 'react-bootstrap/Nav';
 import ReactNavbar from 'react-bootstrap/Navbar';
+import { useNavigate } from "react-router-dom";
+import { ThemeContext, UserContext } from "../App";
 
 
 // Here, we display our Navbar
 export default function Navbar() {
+  const { user, setUser } = useContext(UserContext);
+  const { theme, toggleTheme } = useContext(ThemeContext);
+  const navigate = useNavigate();
+  const isLoggedIn = Boolean(user);
+  const nextTheme = theme === "dark" ? "light" : "dark";
+
+  const handleLogout = () => {
+    localStorage.removeItem("accessToken");
+    setUser(undefined);
+    navigate("/");
+  };
+
   return (
-    <ReactNavbar style={styles.navbar} variant="dark">
+    <ReactNavbar
+      style={styles.navbar}
+      variant={theme === "dark" ? "dark" : "light"}
+      expand="md"
+    >
       <Container style={styles.container}>
         <ReactNavbar.Brand href="/" style={styles.brand}>
           WaterScent
         </ReactNavbar.Brand>
 
+        <ReactNavbar.Toggle aria-controls="waterscent-navbar" />
+        <ReactNavbar.Collapse
+          id="waterscent-navbar"
+          className="ws-navbar-collapse"
+          style={styles.collapse}
+        >
         <Nav style={styles.links}>
           <Nav.Link href="/" style={styles.link}>
             Home
           </Nav.Link>
-          <Nav.Link href="/login" style={styles.link}>
-            Log In
-          </Nav.Link>
-          <Nav.Link href="/signup" style={styles.signUpLink}>
-            Sign Up
-          </Nav.Link>
+          {isLoggedIn ? (
+            <>
+              <Nav.Link href="/privateUserProfile" style={styles.link}>
+                Profile
+              </Nav.Link>
+              <button type="button" onClick={handleLogout} style={styles.navButton}>
+                Log Out
+              </button>
+            </>
+          ) : (
+            <>
+              <Nav.Link href="/login" style={styles.link}>
+                Log In
+              </Nav.Link>
+              <Nav.Link href="/signup" style={styles.signUpLink}>
+                Sign Up
+              </Nav.Link>
+            </>
+          )}
+          <button
+            type="button"
+            className="ws-theme-toggle"
+            onClick={toggleTheme}
+            aria-label={`Switch to ${nextTheme} mode`}
+            title={`Switch to ${nextTheme} mode`}
+          >
+            <span aria-hidden="true">{theme === "dark" ? "Sun" : "Moon"}</span>
+            <span>{theme === "dark" ? "Light" : "Dark"}</span>
+          </button>
         </Nav>
+        </ReactNavbar.Collapse>
       </Container>
     </ReactNavbar>
   );
@@ -31,10 +79,9 @@ export default function Navbar() {
 
 const styles = {
   navbar: {
-    background:
-      "linear-gradient(135deg, #140c08 0%, #2b1b13 52%, #7b5136 100%)",
-    borderBottom: "1px solid rgba(244, 220, 193, 0.18)",
-    boxShadow: "0 12px 30px rgba(20, 12, 8, 0.24)",
+    background: "var(--ws-navbar-bg)",
+    borderBottom: "1px solid var(--ws-border)",
+    boxShadow: "var(--ws-card-shadow)",
     padding: "12px 0",
   },
 
@@ -44,8 +91,12 @@ const styles = {
     justifyContent: "space-between",
   },
 
+  collapse: {
+    justifyContent: "flex-end",
+  },
+
   brand: {
-    color: "#fff8ef",
+    color: "var(--ws-text)",
     fontWeight: "800",
     letterSpacing: "0.4px",
   },
@@ -54,18 +105,28 @@ const styles = {
     display: "flex",
     alignItems: "center",
     gap: "10px",
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
   },
 
   link: {
-    color: "rgba(255,255,255,0.82)",
+    color: "var(--ws-nav-link)",
     fontWeight: "700",
   },
 
   signUpLink: {
-    backgroundColor: "#fff8ef",
+    backgroundColor: "var(--ws-pill-bg)",
     borderRadius: "999px",
-    color: "#2b1b13",
+    color: "var(--ws-pill-text)",
     fontWeight: "800",
     padding: "8px 16px",
+  },
+
+  navButton: {
+    background: "transparent",
+    border: "none",
+    color: "var(--ws-nav-link)",
+    fontWeight: "700",
+    padding: "8px",
   },
 };

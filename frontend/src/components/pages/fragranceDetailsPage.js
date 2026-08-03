@@ -1,8 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import Button from "react-bootstrap/Button";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import API_URL from "../../utilities/api";
+import { UserContext } from "../../App";
+import getUserInfo from "../../utilities/decodeJwt";
 
 const ACCORD_COLORS = ["#4778d9", "#45a86b", "#e99a3d", "#8b5fd6", "#d85c98"];
 const DEFAULT_ACCORD_WEIGHTS = [35, 25, 18, 12, 10];
@@ -24,9 +26,46 @@ const buildAccordData = (accords = []) => {
   }));
 };
 
+const MAX_REVIEW_LENGTH = 1500;
+
+const renderStars = (rating, label = `${rating || 0} out of 5 stars`) => (
+  <span aria-label={label} style={styles.starRow}>
+    {[1, 2, 3, 4, 5].map((star) => (
+      <span key={star} aria-hidden="true">
+        {star <= Math.round(rating || 0) ? "★" : "☆"}
+      </span>
+    ))}
+  </span>
+);
+
+const formatReviewDate = (value) => {
+  if (!value) return "";
+
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(value));
+};
+
+const readApiJson = async (response) => {
+  const text = await response.text();
+
+  if (!text) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    return {};
+  }
+};
+
 const FragranceDetailsPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useContext(UserContext);
 
   const [fragrance, setFragrance] = useState(null);
   const [imageUrl, setImageUrl] = useState("");
@@ -34,7 +73,19 @@ const FragranceDetailsPage = () => {
   const [imageMessage, setImageMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [activeAccord, setActiveAccord] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [reviewSummary, setReviewSummary] = useState({
+    reviewCount: 0,
+    averageRating: null,
+  });
+  const [reviewsLoading, setReviewsLoading] = useState(true);
+  const [reviewsError, setReviewsError] = useState("");
+  const [reviewSuccess, setReviewSuccess] = useState("");
+  const [reviewForm, setReviewForm] = useState({ rating: 0, comment: "" });
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewEditing, setReviewEditing] = useState(false);
   const imageLookupStarted = useRef(false);
+  const activeUser = user || getUserInfo();
 
   useEffect(() => {
     fetch(`${API_URL}/api/fragrances/${id}`)
@@ -57,6 +108,35 @@ const FragranceDetailsPage = () => {
       });
   }, [id]);
 
+  const loadReviews = useCallback(async () => {
+    setReviewsLoading(true);
+    setReviewsError("");
+
+    try {
+      const response = await fetch(`${API_URL}/api/fragrances/${id}/reviews`);
+      const data = await readApiJson(response);
+
+      if (!response.ok) {
+        throw new Error(data.message || "Unable to load reviews.");
+      }
+
+      setReviews(Array.isArray(data.reviews) ? data.reviews : []);
+      setReviewSummary({
+        reviewCount: data.reviewCount || 0,
+        averageRating: data.averageRating ?? null,
+      });
+    } catch (error) {
+      setReviews([]);
+      setReviewSummary({ reviewCount: 0, averageRating: null });
+    } finally {
+      setReviewsLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    loadReviews();
+  }, [loadReviews]);
+
   const requestFragranceImage = useCallback(async (replaceGenerated) => {
     setImageLoading(true);
     setImageMessage("");
@@ -69,7 +149,7 @@ const FragranceDetailsPage = () => {
         },
         body: JSON.stringify({ replaceGenerated }),
       });
-      const data = await response.json();
+      const data = await readApiJson(response);
 
       if (!response.ok || !data.imageUrl) {
         setImageMessage(data.message || "No matching bottle image was found.");
@@ -106,6 +186,144 @@ const FragranceDetailsPage = () => {
     requestFragranceImage(false);
   }, [fragrance, imageUrl, requestFragranceImage]);
 
+  const currentUserReview = reviews.find(
+    (review) =>
+      activeUser?.id && String(review.userId) === String(activeUser.id)
+  );
+
+  const applyReviewSummary = (summary) => {
+    if (!summary) return;
+
+    setReviews(Array.isArray(summary.reviews) ? summary.reviews : []);
+    setReviewSummary({
+      reviewCount: summary.reviewCount || 0,
+      averageRating: summary.averageRating ?? null,
+    });
+  };
+
+  const getReviewValidationMessage = () => {
+    if (!reviewForm.rating) {
+      return "Please select a rating.";
+    }
+
+    if (!reviewForm.comment.trim()) {
+      return "Please write a review before submitting.";
+    }
+
+    if (reviewForm.comment.trim().length > MAX_REVIEW_LENGTH) {
+      return `Reviews must be ${MAX_REVIEW_LENGTH} characters or fewer.`;
+    }
+
+    return "";
+  };
+
+  const handleReviewSubmit = async (event) => {
+    event.preventDefault();
+    const validationMessage = getReviewValidationMessage();
+
+    if (validationMessage) {
+      setReviewsError(validationMessage);
+      return;
+    }
+
+    const accessToken = localStorage.getItem("accessToken");
+    if (!accessToken) {
+      setReviewsError("Please log in to leave a review.");
+      return;
+    }
+
+    const editingExistingReview = Boolean(reviewEditing && currentUserReview);
+    const endpoint = editingExistingReview
+      ? `${API_URL}/api/reviews/${currentUserReview._id}`
+      : `${API_URL}/api/fragrances/${id}/reviews`;
+
+    setReviewSubmitting(true);
+    setReviewsError("");
+    setReviewSuccess("");
+
+    try {
+      const response = await fetch(endpoint, {
+        method: editingExistingReview ? "PUT" : "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          rating: reviewForm.rating,
+          comment: reviewForm.comment.trim(),
+        }),
+      });
+      const data = await readApiJson(response);
+
+      if (!response.ok) {
+        throw new Error(data.message || "Review could not be submitted.");
+      }
+
+      applyReviewSummary(data.summary);
+      setReviewForm({ rating: 0, comment: "" });
+      setReviewEditing(false);
+      setReviewSuccess(
+        editingExistingReview ? "Review updated." : "Review added."
+      );
+    } catch (error) {
+      setReviewsError(error.message || "Review could not be submitted.");
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
+
+  const startEditingReview = (review) => {
+    setReviewForm({ rating: review.rating, comment: review.comment });
+    setReviewEditing(true);
+    setReviewSuccess("");
+    setReviewsError("");
+  };
+
+  const cancelEditingReview = () => {
+    setReviewForm({ rating: 0, comment: "" });
+    setReviewEditing(false);
+    setReviewsError("");
+  };
+
+  const deleteReview = async (review) => {
+    if (!window.confirm("Delete this review permanently?")) {
+      return;
+    }
+
+    const accessToken = localStorage.getItem("accessToken");
+    if (!accessToken) {
+      setReviewsError("Please log in to delete your review.");
+      return;
+    }
+
+    setReviewSubmitting(true);
+    setReviewsError("");
+    setReviewSuccess("");
+
+    try {
+      const response = await fetch(`${API_URL}/api/reviews/${review._id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      const data = await readApiJson(response);
+
+      if (!response.ok) {
+        throw new Error(data.message || "Unable to delete review.");
+      }
+
+      applyReviewSummary(data.summary);
+      setReviewForm({ rating: 0, comment: "" });
+      setReviewEditing(false);
+      setReviewSuccess("Review deleted.");
+    } catch (error) {
+      setReviewsError(error.message || "Unable to delete review.");
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
+
   if (loading) {
     return <p style={styles.status}>Loading fragrance...</p>;
   }
@@ -137,6 +355,168 @@ const FragranceDetailsPage = () => {
     </article>
   );
 
+  const renderRatingSelector = () => (
+    <fieldset style={styles.ratingSelector}>
+      <legend style={styles.formLabel}>Your rating</legend>
+      <div style={styles.ratingOptions}>
+        {[1, 2, 3, 4, 5].map((rating) => (
+          <label key={rating} style={styles.ratingOption}>
+            <input
+              type="radio"
+              name="review-rating"
+              value={rating}
+              checked={reviewForm.rating === rating}
+              onChange={() =>
+                setReviewForm((current) => ({ ...current, rating }))
+              }
+              style={styles.ratingInput}
+            />
+            <span
+              style={{
+                ...styles.ratingStarButton,
+                ...(reviewForm.rating >= rating
+                  ? styles.ratingStarButtonActive
+                  : {}),
+              }}
+            >
+              ★
+            </span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+
+  const renderReviewForm = () => {
+    if (!activeUser) {
+      return (
+        <div style={styles.reviewPrompt}>
+          <p style={styles.ratingText}>Must log in to review.</p>
+          <Link to="/login" style={styles.sourceLink}>
+            Go to login
+          </Link>
+        </div>
+      );
+    }
+
+    if (currentUserReview && !reviewEditing) {
+      return (
+        <div style={styles.reviewPrompt}>
+          <p style={styles.ratingText}>
+            You have already reviewed this fragrance.
+          </p>
+          <Button
+            type="button"
+            style={styles.imageButton}
+            onClick={() => startEditingReview(currentUserReview)}
+          >
+            Edit your review
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <form onSubmit={handleReviewSubmit} style={styles.reviewForm}>
+        {renderRatingSelector()}
+
+        <label style={styles.formLabel} htmlFor="review-comment">
+          Your review
+        </label>
+        <textarea
+          id="review-comment"
+          value={reviewForm.comment}
+          maxLength={MAX_REVIEW_LENGTH}
+          onChange={(event) =>
+            setReviewForm((current) => ({
+              ...current,
+              comment: event.target.value,
+            }))
+          }
+          placeholder="What did this fragrance smell like to you?"
+          style={styles.reviewTextarea}
+        />
+
+        <div style={styles.reviewFormFooter}>
+          <span style={styles.ratingText}>
+            {reviewForm.comment.length}/{MAX_REVIEW_LENGTH}
+          </span>
+          <div style={styles.reviewActions}>
+            {reviewEditing && (
+              <Button
+                type="button"
+                style={styles.secondaryButton}
+                onClick={cancelEditingReview}
+                disabled={reviewSubmitting}
+              >
+                Cancel
+              </Button>
+            )}
+            <Button
+              type="submit"
+              style={styles.imageButton}
+              disabled={reviewSubmitting}
+            >
+              {reviewSubmitting
+                ? "Saving..."
+                : reviewEditing
+                ? "Update review"
+                : "Submit review"}
+            </Button>
+          </div>
+        </div>
+      </form>
+    );
+  };
+
+  const renderReviewCard = (review) => {
+    const isOwner = Boolean(
+      activeUser?.id && String(review.userId) === String(activeUser.id)
+    );
+    const edited =
+      review.updatedAt &&
+      review.createdAt &&
+      new Date(review.updatedAt).getTime() - new Date(review.createdAt).getTime() >
+        1000;
+
+    return (
+      <article key={review._id} className="ws-card" style={styles.reviewCard}>
+        <div style={styles.reviewCardHeader}>
+          <div>
+            <h3 style={styles.reviewAuthor}>{review.username || "WaterScent user"}</h3>
+            <p style={styles.ratingText}>
+              {formatReviewDate(review.createdAt)}
+              {edited ? " • Edited" : ""}
+            </p>
+          </div>
+          {renderStars(review.rating)}
+        </div>
+
+        <p style={styles.reviewComment}>{review.comment}</p>
+
+        {isOwner && (
+          <div style={styles.reviewActions}>
+            <Button
+              type="button"
+              style={styles.secondaryButton}
+              onClick={() => startEditingReview(review)}
+            >
+              Edit
+            </Button>
+            <Button
+              type="button"
+              style={styles.dangerButton}
+              onClick={() => deleteReview(review)}
+              disabled={reviewSubmitting}
+            >
+              Delete
+            </Button>
+          </div>
+        )}
+      </article>
+    );
+  };
+
   return (
     <div style={styles.page}>
       <style>
@@ -148,8 +528,8 @@ const FragranceDetailsPage = () => {
 
           .ws-card:hover {
             transform: translateY(-4px);
-            box-shadow: 0 28px 70px rgba(0, 0, 0, 0.28);
-            border-color: rgba(244, 220, 193, 0.28);
+            box-shadow: var(--ws-card-shadow);
+            border-color: var(--ws-border-strong);
           }
 
           .ws-hero {
@@ -158,6 +538,10 @@ const FragranceDetailsPage = () => {
 
           .ws-content-grid {
             grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr);
+          }
+
+          .ws-reviews-layout {
+            grid-template-columns: minmax(240px, 0.78fr) minmax(320px, 1.22fr);
           }
 
           @keyframes wsFadeIn {
@@ -173,7 +557,8 @@ const FragranceDetailsPage = () => {
 
           @media (max-width: 900px) {
             .ws-hero,
-            .ws-content-grid {
+            .ws-content-grid,
+            .ws-reviews-layout {
               grid-template-columns: 1fr;
             }
 
@@ -334,9 +719,9 @@ const FragranceDetailsPage = () => {
           </article>
 
           <section style={styles.notesGrid}>
-            {renderNoteCard("Top Notes", fragrance.notes?.top, "Top", "linear-gradient(145deg, rgba(123,81,54,0.78), rgba(43,27,19,0.94))")}
-            {renderNoteCard("Middle Notes", fragrance.notes?.middle, "Heart", "linear-gradient(145deg, rgba(204,92,153,0.38), rgba(43,27,19,0.95))")}
-            {renderNoteCard("Base Notes", fragrance.notes?.base, "Base", "linear-gradient(145deg, rgba(109,67,40,0.72), rgba(20,12,8,0.96))")}
+            {renderNoteCard("Top Notes", fragrance.notes?.top, "Top", "var(--ws-note-top-bg)")}
+            {renderNoteCard("Middle Notes", fragrance.notes?.middle, "Heart", "var(--ws-note-middle-bg)")}
+            {renderNoteCard("Base Notes", fragrance.notes?.base, "Base", "var(--ws-note-base-bg)")}
           </section>
 
           <section className="ws-content-grid" style={styles.lowerGrid}>
@@ -403,7 +788,7 @@ const FragranceDetailsPage = () => {
           <article className="ws-card" style={styles.ratingCard}>
             <span style={styles.ratingStar}>★</span>
             <div>
-              <p style={styles.kicker}>Community Rating</p>
+              <p style={styles.kicker}>Original Source Rating</p>
               <h2 style={styles.ratingTitle}>
                 {fragrance.ratingValue || "N/A"}
               </h2>
@@ -412,6 +797,55 @@ const FragranceDetailsPage = () => {
               </p>
             </div>
           </article>
+
+          <section className="ws-card" style={styles.reviewsSection}>
+            <div className="ws-reviews-layout" style={styles.reviewsLayout}>
+              <div>
+                <p style={styles.kicker}>WaterScent Reviews</p>
+                <h2 style={styles.sectionTitle}>Community Reviews</h2>
+                <div style={styles.reviewSummary}>
+                  <span style={styles.ratingStar}>★</span>
+                  <div>
+                    <h3 style={styles.reviewAverage}>
+                      {reviewSummary.averageRating ?? "N/A"}
+                    </h3>
+                    <p style={styles.ratingText}>
+                      {reviewSummary.reviewCount}{" "}
+                      {reviewSummary.reviewCount === 1 ? "review" : "reviews"}
+                    </p>
+                  </div>
+                </div>
+                {reviewSummary.averageRating
+                  ? renderStars(reviewSummary.averageRating)
+                  : null}
+              </div>
+
+              <div style={styles.reviewFormCard}>
+                <h3 style={styles.reviewFormTitle}>
+                  {reviewEditing ? "Edit your review" : "Leave a review"}
+                </h3>
+                {renderReviewForm()}
+                {reviewsError && <p style={styles.reviewError}>{reviewsError}</p>}
+                {reviewSuccess && (
+                  <p style={styles.reviewSuccess}>{reviewSuccess}</p>
+                )}
+              </div>
+            </div>
+
+            <div style={styles.reviewList}>
+              {reviewsLoading && (
+                <p style={styles.ratingText}>Loading reviews...</p>
+              )}
+
+              {!reviewsLoading && reviews.length === 0 && (
+                <p style={styles.ratingText}>
+                  No reviews yet. Be the first to review this fragrance.
+                </p>
+              )}
+
+              {!reviewsLoading && reviews.map(renderReviewCard)}
+            </div>
+          </section>
         </section>
       </main>
     </div>
@@ -421,9 +855,8 @@ const FragranceDetailsPage = () => {
 const styles = {
   page: {
     minHeight: "100vh",
-    background:
-      "radial-gradient(circle at top left, rgba(243,215,183,0.16) 0%, transparent 28%), linear-gradient(180deg, #1c110c 0%, #2b1b13 46%, #140c08 100%)",
-    color: "#fff8ef",
+    background: "var(--ws-page-bg)",
+    color: "var(--ws-text)",
     fontFamily:
       "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
   },
@@ -435,12 +868,12 @@ const styles = {
   },
 
   backButton: {
-    backgroundColor: "rgba(255,255,255,0.12)",
-    border: "1px solid rgba(255,255,255,0.22)",
+    backgroundColor: "var(--ws-card-solid)",
+    border: "1px solid var(--ws-border)",
     borderRadius: "999px",
     padding: "10px 20px",
     marginBottom: "22px",
-    boxShadow: "0 12px 28px rgba(0, 0, 0, 0.24)",
+    boxShadow: "var(--ws-card-shadow)",
   },
 
   hero: {
@@ -449,17 +882,16 @@ const styles = {
     alignItems: "center",
     padding: "42px",
     borderRadius: "34px",
-    border: "1px solid rgba(255, 255, 255, 0.14)",
-    background:
-      "radial-gradient(circle at top right, rgba(243,215,183,0.2), transparent 34%), linear-gradient(135deg, rgba(20,12,8,0.94), rgba(43,27,19,0.9) 54%, rgba(123,81,54,0.78))",
-    boxShadow: "0 30px 90px rgba(0, 0, 0, 0.28)",
+    border: "1px solid var(--ws-border)",
+    background: "var(--ws-hero-panel-bg)",
+    boxShadow: "var(--ws-card-shadow)",
   },
 
   imagePanel: {
     minHeight: "440px",
     borderRadius: "30px",
     background:
-      "linear-gradient(145deg, #f5e6d3 0%, #fff8ef 52%, #efe1cf 100%)",
+      "var(--ws-image-bg)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -483,23 +915,23 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     borderRadius: "24px",
-    color: "#6d4328",
+    color: "var(--ws-brown-soft)",
     background: "rgba(255,255,255,0.62)",
     fontWeight: "700",
     letterSpacing: "0.4px",
   },
 
   heroCopy: {
-    color: "white",
+    color: "var(--ws-text)",
   },
 
   badge: {
     display: "inline-block",
     padding: "8px 16px",
     borderRadius: "999px",
-    backgroundColor: "#fff8ef",
-    border: "1px solid #efe1cf",
-    color: "#2b1b13",
+    backgroundColor: "var(--ws-pill-bg)",
+    border: "1px solid var(--ws-accent-2)",
+    color: "var(--ws-pill-text)",
     marginBottom: "18px",
     textTransform: "uppercase",
     fontSize: "12px",
@@ -521,7 +953,7 @@ const styles = {
     gap: "10px",
     marginBottom: "28px",
     textTransform: "capitalize",
-    color: "rgba(255,255,255,0.78)",
+    color: "var(--ws-muted)",
   },
 
   ratingHero: {
@@ -532,9 +964,9 @@ const styles = {
     alignItems: "center",
     padding: "16px 20px",
     borderRadius: "22px",
-    background: "#fff8ef",
-    color: "#2b1b13",
-    boxShadow: "0 18px 38px rgba(0, 0, 0, 0.24)",
+    background: "var(--ws-card-elevated)",
+    color: "var(--ws-brown)",
+    boxShadow: "var(--ws-card-shadow)",
   },
 
   imageActions: {
@@ -545,23 +977,23 @@ const styles = {
   },
 
   imageButton: {
-    backgroundColor: "rgba(255,255,255,0.14)",
-    border: "1px solid rgba(255,255,255,0.24)",
+    backgroundColor: "var(--ws-card-solid)",
+    border: "1px solid var(--ws-border)",
     borderRadius: "999px",
     padding: "9px 16px",
-    color: "#fff8ef",
+    color: "var(--ws-text)",
     fontWeight: "700",
   },
 
   imageMessage: {
     margin: 0,
-    color: "rgba(255,255,255,0.74)",
+    color: "var(--ws-muted)",
     fontSize: "13px",
   },
 
   star: {
     gridRow: "span 2",
-    color: "#f0b84e",
+    color: "var(--ws-gold)",
     fontSize: "34px",
     lineHeight: 1,
   },
@@ -572,7 +1004,7 @@ const styles = {
   },
 
   ratingCopy: {
-    color: "#6d4328",
+    color: "var(--ws-brown-soft)",
     fontSize: "13px",
   },
 
@@ -583,12 +1015,12 @@ const styles = {
   },
 
   card: {
-    border: "1px solid rgba(255, 255, 255, 0.12)",
+    border: "1px solid var(--ws-border)",
     borderRadius: "28px",
     padding: "30px",
     background:
-      "linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0.06))",
-    boxShadow: "0 18px 50px rgba(0, 0, 0, 0.2)",
+      "var(--ws-card-bg)",
+    boxShadow: "var(--ws-soft-shadow)",
   },
 
   sectionHeader: {
@@ -605,14 +1037,14 @@ const styles = {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    background: "rgba(244,220,193,0.14)",
-    color: "#f4dcc1",
+    background: "var(--ws-accent-2)",
+    color: "var(--ws-brown-soft)",
     fontWeight: "900",
   },
 
   kicker: {
     margin: 0,
-    color: "#f3d7b7",
+    color: "var(--ws-muted-strong)",
     fontSize: "12px",
     fontWeight: "800",
     textTransform: "uppercase",
@@ -621,7 +1053,7 @@ const styles = {
 
   sectionTitle: {
     margin: "3px 0 0",
-    color: "#fff8ef",
+    color: "var(--ws-text-strong)",
     fontSize: "28px",
     fontWeight: "820",
   },
@@ -640,7 +1072,7 @@ const styles = {
   tooltip: {
     border: "none",
     borderRadius: "14px",
-    boxShadow: "0 12px 28px rgba(0, 0, 0, 0.26)",
+    boxShadow: "var(--ws-soft-shadow)",
   },
 
   legendList: {
@@ -655,8 +1087,8 @@ const styles = {
     gap: "12px",
     padding: "13px 14px",
     borderRadius: "16px",
-    background: "#fff8ef",
-    border: "1px solid #efe1cf",
+    background: "var(--ws-card-elevated)",
+    border: "1px solid var(--ws-accent-2)",
     textTransform: "capitalize",
   },
 
@@ -667,12 +1099,12 @@ const styles = {
   },
 
   legendName: {
-    color: "#2b1b13",
+    color: "var(--ws-brown)",
     fontWeight: "700",
   },
 
   legendValue: {
-    color: "#6d4328",
+    color: "var(--ws-brown-soft)",
   },
 
   notesGrid: {
@@ -682,10 +1114,10 @@ const styles = {
   },
 
   noteCard: {
-    border: "1px solid rgba(255, 255, 255, 0.12)",
+    border: "1px solid var(--ws-border)",
     borderRadius: "26px",
     padding: "26px",
-    boxShadow: "0 18px 48px rgba(0, 0, 0, 0.22)",
+    boxShadow: "var(--ws-soft-shadow)",
   },
 
   cardEyebrow: {
@@ -702,8 +1134,8 @@ const styles = {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    background: "#fff8ef",
-    color: "#6d4328",
+    background: "var(--ws-card-elevated)",
+    color: "var(--ws-brown-soft)",
     fontSize: "12px",
     fontWeight: "900",
     textTransform: "uppercase",
@@ -712,7 +1144,7 @@ const styles = {
   noteTitle: {
     margin: 0,
     fontSize: "22px",
-    color: "#fff8ef",
+    color: "var(--ws-text-strong)",
   },
 
   chipWrap: {
@@ -724,9 +1156,9 @@ const styles = {
   noteChip: {
     padding: "9px 13px",
     borderRadius: "999px",
-    background: "#fff8ef",
-    border: "1px solid #efe1cf",
-    color: "#2b1b13",
+    background: "var(--ws-card-elevated)",
+    border: "1px solid var(--ws-accent-2)",
+    color: "var(--ws-brown)",
     fontSize: "14px",
     fontWeight: "700",
     textTransform: "capitalize",
@@ -740,8 +1172,8 @@ const styles = {
   perfumerChip: {
     padding: "10px 15px",
     borderRadius: "999px",
-    background: "#fff8ef",
-    color: "#2b1b13",
+    background: "var(--ws-card-elevated)",
+    color: "var(--ws-brown)",
     fontSize: "14px",
     fontWeight: "700",
     textTransform: "capitalize",
@@ -759,8 +1191,8 @@ const styles = {
     gap: "12px",
     padding: "12px",
     borderRadius: "17px",
-    background: "#fff8ef",
-    border: "1px solid #efe1cf",
+    background: "var(--ws-card-elevated)",
+    border: "1px solid var(--ws-accent-2)",
   },
 
   detailIcon: {
@@ -770,21 +1202,21 @@ const styles = {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    background: "#efe1cf",
-    color: "#6d4328",
+    background: "var(--ws-accent-2)",
+    color: "var(--ws-brown-soft)",
     fontSize: "11px",
     fontWeight: "900",
   },
 
   detailLabel: {
-    color: "#8b5e3c",
+    color: "var(--ws-brown-soft)",
     fontSize: "13px",
     fontWeight: "800",
     textTransform: "uppercase",
   },
 
   detailValue: {
-    color: "#2b1b13",
+    color: "var(--ws-brown)",
     textTransform: "capitalize",
     overflowWrap: "anywhere",
   },
@@ -792,7 +1224,7 @@ const styles = {
   sourceLink: {
     display: "inline-block",
     marginTop: "20px",
-    color: "#f4dcc1",
+    color: "var(--ws-accent)",
     fontWeight: "800",
     textDecoration: "none",
   },
@@ -801,13 +1233,13 @@ const styles = {
     display: "flex",
     alignItems: "center",
     gap: "20px",
-    border: "1px solid rgba(255, 255, 255, 0.12)",
+    border: "1px solid var(--ws-border)",
     borderRadius: "28px",
     padding: "28px",
     background:
-      "linear-gradient(135deg, #140c08 0%, #2b1b13 48%, #7b5136 100%)",
-    color: "white",
-    boxShadow: "0 24px 60px rgba(0, 0, 0, 0.28)",
+      "var(--ws-rating-card-bg)",
+    color: "var(--ws-text)",
+    boxShadow: "var(--ws-card-shadow)",
   },
 
   ratingStar: {
@@ -817,8 +1249,8 @@ const styles = {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    background: "rgba(255,255,255,0.12)",
-    color: "#f0b84e",
+    background: "var(--ws-card-solid)",
+    color: "var(--ws-gold)",
     fontSize: "42px",
   },
 
@@ -830,18 +1262,218 @@ const styles = {
 
   ratingText: {
     margin: 0,
-    color: "rgba(255,255,255,0.78)",
+    color: "var(--ws-muted)",
+  },
+
+  reviewsSection: {
+    border: "1px solid var(--ws-border)",
+    borderRadius: "28px",
+    padding: "30px",
+    background: "var(--ws-card-bg)",
+    boxShadow: "var(--ws-soft-shadow)",
+  },
+
+  reviewsLayout: {
+    display: "grid",
+    gap: "26px",
+    alignItems: "start",
+  },
+
+  reviewSummary: {
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+    marginTop: "18px",
+    marginBottom: "10px",
+  },
+
+  reviewAverage: {
+    margin: 0,
+    color: "var(--ws-text-strong)",
+    fontSize: "38px",
+    lineHeight: 1,
+  },
+
+  starRow: {
+    color: "var(--ws-gold)",
+    display: "inline-flex",
+    gap: "3px",
+    fontSize: "20px",
+    letterSpacing: 0,
+  },
+
+  reviewFormCard: {
+    background: "var(--ws-card-solid)",
+    border: "1px solid var(--ws-border)",
+    borderRadius: "24px",
+    padding: "24px",
+  },
+
+  reviewFormTitle: {
+    margin: "0 0 16px",
+    color: "var(--ws-text-strong)",
+    fontSize: "22px",
+    fontWeight: "820",
+  },
+
+  reviewForm: {
+    display: "grid",
+    gap: "14px",
+  },
+
+  ratingSelector: {
+    border: "none",
+    margin: 0,
+    padding: 0,
+  },
+
+  formLabel: {
+    color: "var(--ws-muted-strong)",
+    fontSize: "13px",
+    fontWeight: "800",
+    marginBottom: "8px",
+    textTransform: "uppercase",
+  },
+
+  ratingOptions: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "8px",
+  },
+
+  ratingOption: {
+    cursor: "pointer",
+  },
+
+  ratingInput: {
+    position: "absolute",
+    opacity: 0,
+    pointerEvents: "none",
+  },
+
+  ratingStarButton: {
+    width: "42px",
+    height: "42px",
+    borderRadius: "14px",
+    border: "1px solid var(--ws-border)",
+    background: "var(--ws-card-elevated)",
+    color: "var(--ws-brown-soft)",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "24px",
+  },
+
+  ratingStarButtonActive: {
+    background: "var(--ws-button-bg)",
+    color: "var(--ws-gold)",
+  },
+
+  reviewTextarea: {
+    minHeight: "140px",
+    resize: "vertical",
+    border: "1px solid var(--ws-border)",
+    borderRadius: "18px",
+    background: "var(--ws-input-bg)",
+    color: "var(--ws-brown)",
+    padding: "14px 16px",
+    width: "100%",
+  },
+
+  reviewFormFooter: {
+    display: "flex",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    gap: "12px",
+  },
+
+  reviewActions: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "10px",
+  },
+
+  reviewPrompt: {
+    display: "grid",
+    gap: "10px",
+  },
+
+  secondaryButton: {
+    background: "transparent",
+    border: "1px solid var(--ws-border)",
+    borderRadius: "999px",
+    color: "var(--ws-text)",
+    fontWeight: "800",
+    padding: "9px 16px",
+  },
+
+  dangerButton: {
+    background: "transparent",
+    border: "1px solid rgba(204, 92, 153, 0.5)",
+    borderRadius: "999px",
+    color: "#d85c98",
+    fontWeight: "800",
+    padding: "9px 16px",
+  },
+
+  reviewError: {
+    color: "#d85c98",
+    fontWeight: "800",
+    margin: "12px 0 0",
+  },
+
+  reviewSuccess: {
+    color: "var(--ws-muted-strong)",
+    fontWeight: "800",
+    margin: "12px 0 0",
+  },
+
+  reviewList: {
+    display: "grid",
+    gap: "16px",
+    marginTop: "26px",
+  },
+
+  reviewCard: {
+    border: "1px solid var(--ws-border)",
+    borderRadius: "22px",
+    padding: "22px",
+    background: "var(--ws-card-solid)",
+  },
+
+  reviewCardHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "16px",
+    alignItems: "start",
+    flexWrap: "wrap",
+    marginBottom: "12px",
+  },
+
+  reviewAuthor: {
+    margin: "0 0 4px",
+    color: "var(--ws-text-strong)",
+    fontSize: "18px",
+    fontWeight: "820",
+  },
+
+  reviewComment: {
+    color: "var(--ws-text)",
+    margin: "0 0 16px",
+    lineHeight: 1.6,
+    overflowWrap: "anywhere",
+    whiteSpace: "pre-wrap",
   },
 
   emptyText: {
-    color: "#f3d7b7",
+    color: "var(--ws-muted-strong)",
     fontWeight: "700",
   },
 
   status: {
     textAlign: "center",
     marginTop: "80px",
-    color: "#f3d7b7",
+    color: "var(--ws-muted-strong)",
     fontSize: "20px",
   },
 };

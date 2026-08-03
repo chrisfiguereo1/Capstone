@@ -7,10 +7,12 @@
 }
 
 .card {
-    background-color: #f8f9fa;
+    background: var(--ws-card-elevated);
     padding: 20px;
     border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--ws-border);
+    box-shadow: var(--ws-soft-shadow);
+    color: var(--ws-brown);
 }
 
 .card h3 {
@@ -20,5 +22,5 @@
 .card p {
     margin: 0;
     font-weight: bold;
-    color: #333;
+    color: var(--ws-brown);
 }

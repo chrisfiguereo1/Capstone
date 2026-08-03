@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import getUserInfo from '../../utilities/decodeJwt';
+import { UserContext } from '../../App';
 
 const HomePage = () => {
     const [user, setUser] = useState({});
+    const { setUser: setGlobalUser } = useContext(UserContext);
     const navigate = useNavigate();
 
     const handleClick = (e) => {
         e.preventDefault();
         localStorage.removeItem('accessToken');
+        setGlobalUser(undefined);
         return navigate('/');
     };
 

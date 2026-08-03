@@ -1,3 +1,119 @@
 @import 'tailwindcss/base';
 @import 'tailwindcss/components';
 @import 'tailwindcss/utilities';
+
+:root,
+:root[data-theme="dark"] {
+  --ws-page-bg: radial-gradient(circle at top left, rgba(243,215,183,0.16) 0%, transparent 28%), linear-gradient(180deg, #1c110c 0%, #2b1b13 46%, #140c08 100%);
+  --ws-page-surface: #140c08;
+  --ws-navbar-bg: linear-gradient(135deg, #140c08 0%, #2b1b13 52%, #7b5136 100%);
+  --ws-hero-bg: radial-gradient(circle at top left, rgba(243,215,183,0.18) 0%, transparent 30%), linear-gradient(135deg, #140c08 0%, #2b1b13 52%, #7b5136 100%);
+  --ws-landing-overlay: linear-gradient(90deg, rgba(20,12,8,0.78), rgba(20,12,8,0.38), rgba(255,255,255,0.04));
+  --ws-hero-panel-bg: radial-gradient(circle at top right, rgba(243,215,183,0.2), transparent 34%), linear-gradient(135deg, rgba(20,12,8,0.94), rgba(43,27,19,0.9) 54%, rgba(123,81,54,0.78));
+  --ws-card-bg: linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0.06));
+  --ws-rating-card-bg: linear-gradient(135deg, #140c08 0%, #2b1b13 48%, #7b5136 100%);
+  --ws-note-top-bg: linear-gradient(145deg, rgba(123,81,54,0.78), rgba(43,27,19,0.94));
+  --ws-note-middle-bg: linear-gradient(145deg, rgba(204,92,153,0.38), rgba(43,27,19,0.95));
+  --ws-note-base-bg: linear-gradient(145deg, rgba(109,67,40,0.72), rgba(20,12,8,0.96));
+  --ws-card-solid: rgba(20, 12, 8, 0.72);
+  --ws-card-elevated: #fff8ef;
+  --ws-input-bg: #fff8ef;
+  --ws-image-bg: linear-gradient(145deg, #f5e6d3 0%, #fff8ef 52%, #efe1cf 100%);
+  --ws-text: #fff8ef;
+  --ws-text-strong: #fff8ef;
+  --ws-text-inverse: #2b1b13;
+  --ws-muted: rgba(255,255,255,0.74);
+  --ws-muted-strong: #f3d7b7;
+  --ws-brown: #2b1b13;
+  --ws-brown-soft: #6d4328;
+  --ws-accent: #f4dcc1;
+  --ws-accent-2: #efe1cf;
+  --ws-gold: #f0b84e;
+  --ws-border: rgba(244, 220, 193, 0.18);
+  --ws-border-strong: rgba(244, 220, 193, 0.28);
+  --ws-card-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+  --ws-soft-shadow: 0 18px 50px rgba(0, 0, 0, 0.2);
+  --ws-nav-link: rgba(255,255,255,0.82);
+  --ws-pill-bg: #fff8ef;
+  --ws-pill-text: #2b1b13;
+  --ws-button-bg: #fff8ef;
+  --ws-button-text: #2b1b13;
+}
+
+:root[data-theme="light"] {
+  --ws-page-bg: radial-gradient(circle at top left, rgba(243,215,183,0.34) 0%, transparent 30%), linear-gradient(180deg, #fffaf3 0%, #fbf7f1 48%, #efe1cf 100%);
+  --ws-page-surface: #fbf7f1;
+  --ws-navbar-bg: linear-gradient(135deg, #fffaf3 0%, #f5e6d3 54%, #d8b995 100%);
+  --ws-hero-bg: radial-gradient(circle at top left, rgba(123,81,54,0.16) 0%, transparent 30%), linear-gradient(135deg, #fffaf3 0%, #f5e6d3 52%, #d8b995 100%);
+  --ws-landing-overlay: linear-gradient(90deg, rgba(255,250,243,0.3), rgba(255,248,239,0.42), rgba(123,81,54,0.08));
+  --ws-hero-panel-bg: radial-gradient(circle at top right, rgba(123,81,54,0.16), transparent 34%), linear-gradient(135deg, rgba(255,250,243,0.96), rgba(245,230,211,0.92) 54%, rgba(216,185,149,0.86));
+  --ws-card-bg: linear-gradient(145deg, rgba(255,255,255,0.92), rgba(255,248,239,0.78));
+  --ws-rating-card-bg: linear-gradient(135deg, #fffaf3 0%, #f5e6d3 48%, #d8b995 100%);
+  --ws-note-top-bg: linear-gradient(145deg, rgba(255,250,243,0.94), rgba(216,185,149,0.72));
+  --ws-note-middle-bg: linear-gradient(145deg, rgba(255,250,243,0.94), rgba(204,92,153,0.18));
+  --ws-note-base-bg: linear-gradient(145deg, rgba(255,250,243,0.94), rgba(109,67,40,0.22));
+  --ws-card-solid: rgba(255, 250, 243, 0.94);
+  --ws-card-elevated: #ffffff;
+  --ws-input-bg: #fffaf3;
+  --ws-image-bg: linear-gradient(145deg, #fffaf3 0%, #f5e6d3 52%, #efe1cf 100%);
+  --ws-text: #2b1b13;
+  --ws-text-strong: #1f1a17;
+  --ws-text-inverse: #fff8ef;
+  --ws-muted: #6c5b4d;
+  --ws-muted-strong: #6d4328;
+  --ws-brown: #2b1b13;
+  --ws-brown-soft: #6d4328;
+  --ws-accent: #7b5136;
+  --ws-accent-2: #efe1cf;
+  --ws-gold: #b87919;
+  --ws-border: rgba(109, 67, 40, 0.18);
+  --ws-border-strong: rgba(109, 67, 40, 0.28);
+  --ws-card-shadow: 0 18px 45px rgba(35, 25, 18, 0.12);
+  --ws-soft-shadow: 0 12px 35px rgba(35, 25, 18, 0.1);
+  --ws-nav-link: #4c3425;
+  --ws-pill-bg: #2b1b13;
+  --ws-pill-text: #fff8ef;
+  --ws-button-bg: #2b1b13;
+  --ws-button-text: #fff8ef;
+}
+
+html {
+  background: var(--ws-page-surface);
+}
+
+body {
+  background: var(--ws-page-surface);
+  color: var(--ws-text);
+}
+
+::placeholder {
+  color: var(--ws-muted) !important;
+  opacity: 0.82 !important;
+}
+
+.ws-theme-toggle {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--ws-border);
+  border-radius: 999px;
+  color: var(--ws-nav-link);
+  display: inline-flex;
+  font-weight: 800;
+  gap: 8px;
+  min-height: 38px;
+  padding: 7px 13px;
+}
+
+:root[data-theme="light"] .ws-theme-toggle {
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.ws-theme-toggle:focus-visible,
+.ws-navbar-link:focus-visible {
+  outline: 3px solid var(--ws-gold);
+  outline-offset: 3px;
+}
+
+.ws-navbar-collapse {
+  visibility: visible !important;
+}

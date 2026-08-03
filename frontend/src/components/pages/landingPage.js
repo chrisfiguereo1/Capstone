@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
 import API_URL from "../../utilities/api";
+import { UserContext } from "../../App";
 
 const DEFAULT_FRAGRANCE_IMAGE =
   "data:image/svg+xml;utf8," +
@@ -36,12 +37,17 @@ const handleImageError = (event) => {
   event.currentTarget.src = DEFAULT_FRAGRANCE_IMAGE;
 };
 
+const normalizeSearchTerm = (value) => value.trim().replace(/\s+/g, " ");
+
 const Landingpage = () => {
   const [search, setSearch] = useState("");
   const [fragrances, setFragrances] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const { user, setUser } = useContext(UserContext);
+  const latestSearchId = useRef(0);
+  const searchAbortController = useRef(null);
 
   const navigate = useNavigate();
 
@@ -62,6 +68,7 @@ const Landingpage = () => {
         if (response.status === 401) {
           localStorage.removeItem("accessToken");
           setCurrentUser(null);
+          setUser(undefined);
           return null;
         }
 
@@ -80,50 +87,92 @@ const Landingpage = () => {
         console.error("Profile error:", error);
         setCurrentUser(null);
       });
+  }, [setUser]);
+
+  useEffect(() => {
+    if (!user) {
+      setCurrentUser(null);
+    }
+  }, [user]);
+
+  const runSearch = useCallback(async (value) => {
+    const normalizedSearch = normalizeSearchTerm(value);
+
+    searchAbortController.current?.abort();
+
+    if (!normalizedSearch) {
+      setFragrances([]);
+      setLoading(false);
+      setSearched(false);
+      return;
+    }
+
+    const requestId = latestSearchId.current + 1;
+    const controller = new AbortController();
+    latestSearchId.current = requestId;
+    searchAbortController.current = controller;
+
+    try {
+      setLoading(true);
+      setSearched(false);
+
+      const response = await fetch(
+        `${API_URL}/api/fragrances/search?q=${encodeURIComponent(normalizedSearch)}`,
+        { signal: controller.signal }
+      );
+
+      const data = await response.json();
+
+      if (latestSearchId.current === requestId) {
+        setFragrances(Array.isArray(data) ? data : []);
+        setSearched(true);
+      }
+    } catch (error) {
+      if (error.name === "AbortError") {
+        return;
+      }
+
+      console.error("Search error:", error);
+      if (latestSearchId.current === requestId) {
+        setFragrances([]);
+        setSearched(true);
+      }
+    } finally {
+      if (latestSearchId.current === requestId) {
+        setLoading(false);
+      }
+    }
   }, []);
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
+  useEffect(() => {
+    const normalizedSearch = normalizeSearchTerm(search);
 
-    if (!search.trim()) return;
-
-    try {
-      setLoading(true);
-      setSearched(true);
-
-      const response = await fetch(
-        `${API_URL}/api/fragrances/search?q=${encodeURIComponent(search)}`
-      );
-
-      const data = await response.json();
-      setFragrances(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("Search error:", error);
+    if (!normalizedSearch) {
+      searchAbortController.current?.abort();
       setFragrances([]);
-    } finally {
       setLoading(false);
+      setSearched(false);
+      return;
     }
+
+    const debounce = setTimeout(() => {
+      runSearch(normalizedSearch);
+    }, 300);
+
+    return () => clearTimeout(debounce);
+  }, [runSearch, search]);
+
+  useEffect(() => {
+    return () => searchAbortController.current?.abort();
+  }, []);
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    runSearch(search);
   };
 
-  const quickSearch = async (value) => {
+  const quickSearch = (value) => {
     setSearch(value);
-
-    try {
-      setLoading(true);
-      setSearched(true);
-
-      const response = await fetch(
-        `${API_URL}/api/fragrances/search?q=${encodeURIComponent(value)}`
-      );
-
-      const data = await response.json();
-      setFragrances(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("Search error:", error);
-      setFragrances([]);
-    } finally {
-      setLoading(false);
-    }
   };
 
   return (
@@ -292,8 +341,8 @@ const Landingpage = () => {
 const styles = {
   page: {
     minHeight: "100vh",
-    backgroundColor: "#fbf7f1",
-    color: "#1f1a17",
+    background: "var(--ws-page-bg)",
+    color: "var(--ws-text)",
   },
 
   hero: {
@@ -303,16 +352,14 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     padding: "80px 20px",
-    background:
-      "radial-gradient(circle at top left, #f3d7b7 0%, transparent 30%), linear-gradient(135deg, #2b1b13 0%, #7b5136 55%, #f4dcc1 100%)",
+    background: "var(--ws-hero-bg)",
     overflow: "hidden",
   },
 
   overlay: {
     position: "absolute",
     inset: 0,
-    background:
-      "linear-gradient(90deg, rgba(20,12,8,0.78), rgba(20,12,8,0.38), rgba(255,255,255,0.04))",
+    background: "var(--ws-landing-overlay)",
   },
 
   heroContent: {
@@ -320,7 +367,7 @@ const styles = {
     zIndex: 1,
     maxWidth: "880px",
     textAlign: "center",
-    color: "white",
+    color: "var(--ws-text)",
   },
 
   badge: {
@@ -328,7 +375,7 @@ const styles = {
     padding: "8px 18px",
     borderRadius: "999px",
     backgroundColor: "rgba(255,255,255,0.14)",
-    border: "1px solid rgba(255,255,255,0.25)",
+    border: "1px solid var(--ws-border-strong)",
     marginBottom: "20px",
     letterSpacing: "1px",
     textTransform: "uppercase",
@@ -343,7 +390,7 @@ const styles = {
   },
 
   welcomeText: {
-    color: "rgba(255,255,255,0.82)",
+    color: "var(--ws-muted)",
     fontSize: "16px",
     fontWeight: "700",
     marginBottom: "10px",
@@ -354,17 +401,17 @@ const styles = {
     fontSize: "20px",
     maxWidth: "700px",
     margin: "0 auto 35px",
-    color: "rgba(255,255,255,0.88)",
+    color: "var(--ws-muted)",
   },
 
   searchBox: {
     display: "flex",
-    backgroundColor: "white",
+    backgroundColor: "var(--ws-card-elevated)",
     borderRadius: "22px",
     padding: "10px",
     maxWidth: "740px",
     margin: "0 auto",
-    boxShadow: "0 20px 50px rgba(0,0,0,0.25)",
+    boxShadow: "var(--ws-card-shadow)",
   },
 
   searchInput: {
@@ -372,11 +419,14 @@ const styles = {
     boxShadow: "none",
     fontSize: "16px",
     padding: "16px 20px",
+    backgroundColor: "var(--ws-card-elevated)",
+    color: "var(--ws-brown)",
   },
 
   searchButton: {
     border: "none",
-    backgroundColor: "#2b1b13",
+    backgroundColor: "var(--ws-button-bg)",
+    color: "var(--ws-button-text)",
     padding: "0 30px",
     borderRadius: "16px",
     fontWeight: "600",
@@ -388,13 +438,13 @@ const styles = {
     justifyContent: "center",
     gap: "10px",
     flexWrap: "wrap",
-    color: "rgba(255,255,255,0.85)",
+    color: "var(--ws-muted)",
   },
 
   quickBtn: {
-    border: "1px solid rgba(255,255,255,0.35)",
+    border: "1px solid var(--ws-border-strong)",
     backgroundColor: "rgba(255,255,255,0.12)",
-    color: "white",
+    color: "var(--ws-text)",
     borderRadius: "999px",
     padding: "6px 14px",
     cursor: "pointer",
@@ -411,10 +461,11 @@ const styles = {
   },
 
   infoCard: {
-    backgroundColor: "white",
+    backgroundColor: "var(--ws-card-elevated)",
     borderRadius: "22px",
     padding: "26px",
-    boxShadow: "0 12px 35px rgba(0,0,0,0.08)",
+    boxShadow: "var(--ws-soft-shadow)",
+    color: "var(--ws-brown)",
   },
 
   resultsSection: {
@@ -428,7 +479,7 @@ const styles = {
 
   status: {
     textAlign: "center",
-    color: "#6c5b4d",
+    color: "var(--ws-muted)",
     fontSize: "18px",
   },
 
@@ -441,7 +492,8 @@ const styles = {
   card: {
     border: "none",
     borderRadius: "22px",
-    boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+    background: "var(--ws-card-elevated)",
+    boxShadow: "var(--ws-soft-shadow)",
     overflow: "hidden",
     cursor: "pointer",
     transition: "transform 0.2s ease, box-shadow 0.2s ease",
@@ -451,7 +503,7 @@ const styles = {
     width: "100%",
     height: "220px",
     borderRadius: "18px",
-    background: "linear-gradient(135deg, #f5e6d3, #fff8ef)",
+    background: "var(--ws-image-bg)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -475,17 +527,17 @@ const styles = {
 
   brand: {
     textTransform: "capitalize",
-    color: "#8b5e3c",
+    color: "var(--ws-brown-soft)",
     marginBottom: "12px",
   },
 
   meta: {
-    color: "#6c6c6c",
+    color: "var(--ws-muted)",
     fontSize: "14px",
   },
 
   rating: {
-    color: "#2b1b13",
+    color: "var(--ws-brown)",
     fontWeight: "600",
   },
 
@@ -497,8 +549,8 @@ const styles = {
   },
 
   accord: {
-    backgroundColor: "#efe1cf",
-    color: "#6d4328",
+    backgroundColor: "var(--ws-accent-2)",
+    color: "var(--ws-brown-soft)",
     padding: "6px 10px",
     borderRadius: "999px",
     fontSize: "12px",
@@ -508,7 +560,7 @@ const styles = {
   notes: {
     marginTop: "14px",
     fontSize: "13px",
-    color: "#5f5249",
+    color: "var(--ws-muted)",
   },
 };
 

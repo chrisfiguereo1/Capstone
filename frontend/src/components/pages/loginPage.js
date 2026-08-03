@@ -1,34 +1,55 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
 import getUserInfo from "../../utilities/decodeJwt";
 import API_URL from "../../utilities/api";
+import { UserContext } from "../../App";
 
-const PRIMARY_COLOR = "#cc5c99";
-const SECONDARY_COLOR = '#0c0c1f'
 const url = `${API_URL}/user/login`;
 
 const Login = () => {
-  const [user, setUser] = useState(null)
+  const { user, setUser } = useContext(UserContext);
   const [data, setData] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
-  const [light, setLight] = useState(false);
-  const [bgColor, setBgColor] = useState(SECONDARY_COLOR);
-  const [bgText, setBgText] = useState('Light Mode')
   const navigate = useNavigate();
 
   let labelStyling = {
-    color: PRIMARY_COLOR,
-    fontWeight: "bold",
+    color: "var(--ws-accent)",
+    fontWeight: "800",
     textDecoration: "none",
   };
-  let backgroundStyling = { background: bgColor };
+  let backgroundStyling = { background: "var(--ws-hero-bg)" };
+  let formCardStyling = {
+    background: "var(--ws-card-solid)",
+    border: "1px solid var(--ws-border)",
+    borderRadius: "26px",
+    boxShadow: "var(--ws-card-shadow)",
+    padding: "32px",
+  };
+  let inputStyling = {
+    backgroundColor: "var(--ws-input-bg)",
+    border: "1px solid var(--ws-accent-2)",
+    borderRadius: "14px",
+    color: "var(--ws-brown)",
+    padding: "11px 14px",
+  };
+  let formTextStyling = {
+    color: "var(--ws-muted)",
+  };
+  let helperLinkStyling = {
+    color: "var(--ws-accent)",
+    fontWeight: "800",
+    textDecoration: "none",
+  };
   let buttonStyling = {
-    background: PRIMARY_COLOR,
+    background: "var(--ws-button-bg)",
     borderStyle: "none",
-    color: bgColor,
+    borderRadius: "999px",
+    color: "var(--ws-button-text)",
+    fontWeight: "800",
+    padding: "10px 22px",
   };
 
   const handleChange = ({ currentTarget: input }) => {
@@ -36,19 +57,10 @@ const Login = () => {
   };
 
   useEffect(() => {
-    const obj = getUserInfo();
-    setUser(obj);
-  }, []);
-  
-  useEffect(() => {
-    if (light) {
-      setBgColor("white");
-      setBgText("Dark mode");
-    } else {
-      setBgColor(SECONDARY_COLOR);
-      setBgText("Light mode");
+    if (user) {
+      navigate("/");
     }
-  }, [light]);
+  }, [user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -57,7 +69,8 @@ const Login = () => {
       const { accessToken } = res;
       //store token in localStorage
       localStorage.setItem("accessToken", accessToken);
-      navigate("/home");
+      setUser(getUserInfo());
+      navigate("/");
     } catch (error) {
       if (
         error.response &&
@@ -69,11 +82,6 @@ const Login = () => {
     }
   };
 
-  if(user) {
-    navigate('/home')
-    return
-  }
-
   return (
     <>
       <section className="vh-100">
@@ -82,7 +90,7 @@ const Login = () => {
             className="row d-flex justify-content-center align-items-center h-100 "
             style={backgroundStyling}>
             <div className="col-md-8 col-lg-6 col-xl-4 offset-xl-1">
-              <Form>
+              <Form onSubmit={handleSubmit} style={formCardStyling}>
                 <Form.Group className="mb-3" controlId="formBasicEmail">
                   <Form.Label style={labelStyling}>Username</Form.Label>
                   <Form.Control
@@ -90,10 +98,8 @@ const Login = () => {
                     name="username"
                     onChange={handleChange}
                     placeholder="Enter username"
+                    style={inputStyling}
                   />
-                  <Form.Text className="text-muted">
-                    We just might sell your data
-                  </Form.Text>
                 </Form.Group>
                 <Form.Group className="mb-3" controlId="formBasicPassword">
                   <Form.Label style={labelStyling}>Password</Form.Label>
@@ -102,33 +108,22 @@ const Login = () => {
                     name="password"
                     placeholder="Password"
                     onChange={handleChange}
+                    style={inputStyling}
                   />
                 </Form.Group>
                 <Form.Group className="mb-3" controlId="formBasicCheckbox">
-                  <Form.Text className="text-muted pt-1">
+                  <Form.Text className="pt-1" style={formTextStyling}>
                     Dont have an account?
                     <span>
-                      <Link to="/signup" style={labelStyling}> Sign up
+                      <Link to="/signup" style={helperLinkStyling}> Sign up
                       </Link>
                     </span>
                   </Form.Text>
                 </Form.Group>
-                <div class="form-check form-switch">
-                  <input
-                    class="form-check-input"
-                    type="checkbox"
-                    id="flexSwitchCheckDefault"
-                    onChange={() => { setLight(!light) }}
-                  />
-                  <label class="form-check-label" for="flexSwitchCheckDefault" className='text-muted'>
-                    {bgText}
-                  </label>
-                </div>
                 {error && <div style={labelStyling} className='pt-3'>{error}</div>}
                 <Button
                   variant="primary"
                   type="submit"
-                  onClick={handleSubmit}
                   style={buttonStyling}
                   className='mt-2'
                 >
