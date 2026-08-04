@@ -27,6 +27,7 @@ const buildAccordData = (accords = []) => {
 };
 
 const MAX_REVIEW_LENGTH = 1500;
+const DEFAULT_PERFORMANCE_FORM = { projection: "", longevity: "" };
 
 const renderStars = (rating, label = `${rating || 0} out of 5 stars`) => (
   <span aria-label={label} style={styles.starRow}>
@@ -84,6 +85,16 @@ const FragranceDetailsPage = () => {
   const [reviewForm, setReviewForm] = useState({ rating: 0, comment: "" });
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [reviewEditing, setReviewEditing] = useState(false);
+  const [performanceSummary, setPerformanceSummary] = useState({
+    ratingCount: 0,
+    averageProjection: null,
+    averageLongevity: null,
+  });
+  const [performanceLoading, setPerformanceLoading] = useState(true);
+  const [performanceError, setPerformanceError] = useState("");
+  const [performanceSuccess, setPerformanceSuccess] = useState("");
+  const [performanceForm, setPerformanceForm] = useState(DEFAULT_PERFORMANCE_FORM);
+  const [performanceSubmitting, setPerformanceSubmitting] = useState(false);
   const imageLookupStarted = useRef(false);
   const activeUser = user || getUserInfo();
 
@@ -136,6 +147,40 @@ const FragranceDetailsPage = () => {
   useEffect(() => {
     loadReviews();
   }, [loadReviews]);
+
+  const loadPerformanceRatings = useCallback(async () => {
+    setPerformanceLoading(true);
+    setPerformanceError("");
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/fragrances/${id}/performance-ratings`
+      );
+      const data = await readApiJson(response);
+
+      if (!response.ok) {
+        throw new Error(data.message || "Unable to load ratings.");
+      }
+
+      setPerformanceSummary({
+        ratingCount: data.ratingCount || 0,
+        averageProjection: data.averageProjection ?? null,
+        averageLongevity: data.averageLongevity ?? null,
+      });
+    } catch (error) {
+      setPerformanceSummary({
+        ratingCount: 0,
+        averageProjection: null,
+        averageLongevity: null,
+      });
+    } finally {
+      setPerformanceLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    loadPerformanceRatings();
+  }, [loadPerformanceRatings]);
 
   const requestFragranceImage = useCallback(async (replaceGenerated) => {
     setImageLoading(true);
@@ -321,6 +366,85 @@ const FragranceDetailsPage = () => {
       setReviewsError(error.message || "Unable to delete review.");
     } finally {
       setReviewSubmitting(false);
+    }
+  };
+
+  const applyPerformanceSummary = (summary) => {
+    if (!summary) return;
+
+    setPerformanceSummary({
+      ratingCount: summary.ratingCount || 0,
+      averageProjection: summary.averageProjection ?? null,
+      averageLongevity: summary.averageLongevity ?? null,
+    });
+  };
+
+  const getPerformanceValidationMessage = () => {
+    const projection = Number(performanceForm.projection);
+    const longevity = Number(performanceForm.longevity);
+
+    if (
+      performanceForm.projection === "" ||
+      performanceForm.longevity === "" ||
+      !Number.isFinite(projection) ||
+      !Number.isFinite(longevity) ||
+      projection < 0 ||
+      projection > 10 ||
+      longevity < 0 ||
+      longevity > 10
+    ) {
+      return "Projection and longevity must be numbers between 0 and 10.";
+    }
+
+    return "";
+  };
+
+  const handlePerformanceSubmit = async (event) => {
+    event.preventDefault();
+    const validationMessage = getPerformanceValidationMessage();
+
+    if (validationMessage) {
+      setPerformanceError(validationMessage);
+      return;
+    }
+
+    const accessToken = localStorage.getItem("accessToken");
+    if (!accessToken) {
+      setPerformanceError("Must log in to rate projection and longevity.");
+      return;
+    }
+
+    setPerformanceSubmitting(true);
+    setPerformanceError("");
+    setPerformanceSuccess("");
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/fragrances/${id}/performance-ratings`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            projection: Number(performanceForm.projection),
+            longevity: Number(performanceForm.longevity),
+          }),
+        }
+      );
+      const data = await readApiJson(response);
+
+      if (!response.ok) {
+        throw new Error(data.message || "Ratings could not be submitted.");
+      }
+
+      applyPerformanceSummary(data.summary);
+      setPerformanceSuccess("Ratings saved.");
+    } catch (error) {
+      setPerformanceError(error.message || "Ratings could not be submitted.");
+    } finally {
+      setPerformanceSubmitting(false);
     }
   };
 
@@ -516,6 +640,112 @@ const FragranceDetailsPage = () => {
       </article>
     );
   };
+
+  const renderPerformanceValue = (label, value) => (
+    <div style={styles.performanceValue}>
+      <span style={styles.ratingText}>{label}</span>
+      <strong style={styles.performanceScore}>
+        {value === null ? "No ratings yet" : `${value}/10`}
+      </strong>
+    </div>
+  );
+
+  const renderPerformanceForm = () => {
+    if (!activeUser) {
+      return (
+        <div style={styles.reviewPrompt}>
+          <p style={styles.ratingText}>Must log in to rate projection and longevity.</p>
+          <Link to="/login" style={styles.sourceLink}>
+            Go to login
+          </Link>
+        </div>
+      );
+    }
+
+    return (
+      <form onSubmit={handlePerformanceSubmit} style={styles.reviewForm}>
+        <div style={styles.performanceInputGrid}>
+          {[
+            ["projection", "Projection"],
+            ["longevity", "Longevity"],
+          ].map(([name, label]) => (
+            <label key={name} style={styles.performanceInputLabel}>
+              <span style={styles.formLabel}>{label}</span>
+              <input
+                type="number"
+                min="0"
+                max="10"
+                step="0.1"
+                value={performanceForm[name]}
+                onChange={(event) =>
+                  setPerformanceForm((current) => ({
+                    ...current,
+                    [name]: event.target.value,
+                  }))
+                }
+                style={styles.performanceInput}
+              />
+            </label>
+          ))}
+        </div>
+
+        <div style={styles.reviewFormFooter}>
+          <span style={styles.ratingText}>Rate each from 0 to 10.</span>
+          <Button
+            type="submit"
+            style={styles.imageButton}
+            disabled={performanceSubmitting}
+          >
+            {performanceSubmitting ? "Saving..." : "Save ratings"}
+          </Button>
+        </div>
+      </form>
+    );
+  };
+
+  const renderPerformanceRatingsSection = () => (
+    <section className="ws-card" style={styles.performanceSection}>
+      <div className="ws-reviews-layout" style={styles.reviewsLayout}>
+        <div>
+          <p style={styles.kicker}>Performance</p>
+          <h2 style={styles.sectionTitle}>Projection and Longevity</h2>
+          <div style={styles.performanceSummary}>
+            {performanceLoading ? (
+              <p style={styles.ratingText}>Loading ratings...</p>
+            ) : (
+              <>
+                {renderPerformanceValue(
+                  "Projection",
+                  performanceSummary.averageProjection
+                )}
+                {renderPerformanceValue(
+                  "Longevity",
+                  performanceSummary.averageLongevity
+                )}
+              </>
+            )}
+          </div>
+          {!performanceLoading && performanceSummary.ratingCount > 0 && (
+            <p style={styles.ratingText}>
+              Based on {performanceSummary.ratingCount}{" "}
+              {performanceSummary.ratingCount === 1 ? "rating" : "ratings"}
+            </p>
+          )}
+        </div>
+
+        <div style={styles.reviewFormCard}>
+          <h3 style={styles.reviewFormTitle}>Rate performance</h3>
+          {renderPerformanceForm()}
+          {performanceError && (
+            <p style={styles.reviewError}>{performanceError}</p>
+          )}
+          {performanceSuccess && (
+            <p style={styles.reviewSuccess}>{performanceSuccess}</p>
+          )}
+        </div>
+      </div>
+    </section>
+  );
 
   return (
     <div style={styles.page}>
@@ -724,79 +954,7 @@ const FragranceDetailsPage = () => {
             {renderNoteCard("Base Notes", fragrance.notes?.base, "Base", "var(--ws-note-base-bg)")}
           </section>
 
-          <section className="ws-content-grid" style={styles.lowerGrid}>
-            <article className="ws-card" style={styles.card}>
-              <div style={styles.sectionHeader}>
-                <span style={styles.sectionIcon}>✦</span>
-                <div>
-                  <p style={styles.kicker}>Creators</p>
-                  <h2 style={styles.sectionTitle}>Perfumers</h2>
-                </div>
-              </div>
-
-              <div style={styles.chipWrap}>
-                {fragrance.perfumers?.length ? (
-                  fragrance.perfumers.map((perfumer, index) => (
-                    <span key={`${perfumer}-${index}`} style={styles.perfumerChip}>
-                      {perfumer}
-                    </span>
-                  ))
-                ) : (
-                  <span style={styles.emptyText}>N/A</span>
-                )}
-              </div>
-            </article>
-
-            <article className="ws-card" style={styles.card}>
-              <div style={styles.sectionHeader}>
-                <span style={styles.sectionIcon}>i</span>
-                <div>
-                  <p style={styles.kicker}>Archive</p>
-                  <h2 style={styles.sectionTitle}>Details</h2>
-                </div>
-              </div>
-
-              <div style={styles.detailsList}>
-                {[
-                  ["Brand", fragrance.brand || "N/A", "Brand"],
-                  ["Country", fragrance.country || "N/A", "Country"],
-                  ["Year", fragrance.year || "N/A", "Year"],
-                  ["Gender", fragrance.gender || "N/A", "Gender"],
-                  ["Source", fragrance.source || "N/A", "Source"],
-                ].map(([label, value, icon]) => (
-                  <div key={label} style={styles.detailRow}>
-                    <span style={styles.detailIcon}>{icon}</span>
-                    <span style={styles.detailLabel}>{label}</span>
-                    <strong style={styles.detailValue}>{value}</strong>
-                  </div>
-                ))}
-              </div>
-
-              {fragrance.url && (
-                <a
-                  href={fragrance.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={styles.sourceLink}
-                >
-                  View Source Page
-                </a>
-              )}
-            </article>
-          </section>
-
-          <article className="ws-card" style={styles.ratingCard}>
-            <span style={styles.ratingStar}>★</span>
-            <div>
-              <p style={styles.kicker}>Original Source Rating</p>
-              <h2 style={styles.ratingTitle}>
-                {fragrance.ratingValue || "N/A"}
-              </h2>
-              <p style={styles.ratingText}>
-                Based on {fragrance.ratingCount || 0} ratings
-              </p>
-            </div>
-          </article>
+          {renderPerformanceRatingsSection()}
 
           <section className="ws-card" style={styles.reviewsSection}>
             <div className="ws-reviews-layout" style={styles.reviewsLayout}>
@@ -846,6 +1004,72 @@ const FragranceDetailsPage = () => {
               {!reviewsLoading && reviews.map(renderReviewCard)}
             </div>
           </section>
+
+          <section className="ws-content-grid" style={styles.lowerGrid}>
+            <article className="ws-card" style={styles.card}>
+              <div style={styles.sectionHeader}>
+                <span style={styles.sectionIcon}>✦</span>
+                <div>
+                  <p style={styles.kicker}>Creators</p>
+                  <h2 style={styles.sectionTitle}>Perfumers</h2>
+                </div>
+              </div>
+
+              <div style={styles.chipWrap}>
+                {fragrance.perfumers?.length ? (
+                  fragrance.perfumers.map((perfumer, index) => (
+                    <span key={`${perfumer}-${index}`} style={styles.perfumerChip}>
+                      {perfumer}
+                    </span>
+                  ))
+                ) : (
+                  <span style={styles.emptyText}>N/A</span>
+                )}
+              </div>
+            </article>
+
+            <article className="ws-card" style={styles.card}>
+              <div style={styles.sectionHeader}>
+                <span style={styles.sectionIcon}>i</span>
+                <div>
+                  <p style={styles.kicker}>Archive</p>
+                  <h2 style={styles.sectionTitle}>Details</h2>
+                </div>
+              </div>
+
+              <div style={styles.detailsList}>
+                {[
+                  ["Brand", fragrance.brand || "N/A", "Brand"],
+                  ["Country", fragrance.country || "N/A", "Country"],
+                  ["Year", fragrance.year || "N/A", "Year"],
+                  ["Gender", fragrance.gender || "N/A", "Gender"],
+                  [
+                    "Source Rating",
+                    `${fragrance.ratingValue || "N/A"} (${fragrance.ratingCount || 0} ratings)`,
+                    "★",
+                  ],
+                  ["Source", fragrance.source || "N/A", "Source"],
+                ].map(([label, value, icon]) => (
+                  <div key={label} style={styles.detailRow}>
+                    <span style={styles.detailIcon}>{icon}</span>
+                    <span style={styles.detailLabel}>{label}</span>
+                    <strong style={styles.detailValue}>{value}</strong>
+                  </div>
+                ))}
+              </div>
+
+              {fragrance.url && (
+                <a
+                  href={fragrance.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={styles.sourceLink}
+                >
+                  View Source Page
+                </a>
+              )}
+            </article>
+          </section>
         </section>
       </main>
     </div>
@@ -870,6 +1094,7 @@ const styles = {
   backButton: {
     backgroundColor: "var(--ws-card-solid)",
     border: "1px solid var(--ws-border)",
+    color: "var(--ws-text)",
     borderRadius: "999px",
     padding: "10px 20px",
     marginBottom: "22px",
@@ -1271,6 +1496,57 @@ const styles = {
     padding: "30px",
     background: "var(--ws-card-bg)",
     boxShadow: "var(--ws-soft-shadow)",
+  },
+
+  performanceSection: {
+    border: "1px solid var(--ws-border)",
+    borderRadius: "28px",
+    padding: "30px",
+    background: "var(--ws-card-bg)",
+    boxShadow: "var(--ws-soft-shadow)",
+  },
+
+  performanceSummary: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+    gap: "14px",
+    marginTop: "18px",
+    marginBottom: "10px",
+  },
+
+  performanceValue: {
+    display: "grid",
+    gap: "4px",
+    padding: "16px",
+    borderRadius: "18px",
+    background: "var(--ws-card-solid)",
+    border: "1px solid var(--ws-border)",
+  },
+
+  performanceScore: {
+    color: "var(--ws-text-strong)",
+    fontSize: "28px",
+    lineHeight: 1.1,
+  },
+
+  performanceInputGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+    gap: "12px",
+  },
+
+  performanceInputLabel: {
+    display: "grid",
+    gap: "8px",
+  },
+
+  performanceInput: {
+    border: "1px solid var(--ws-border)",
+    borderRadius: "16px",
+    background: "var(--ws-input-bg)",
+    color: "var(--ws-brown)",
+    padding: "12px 14px",
+    width: "100%",
   },
 
   reviewsLayout: {

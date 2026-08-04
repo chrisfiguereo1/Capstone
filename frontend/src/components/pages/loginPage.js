@@ -6,6 +6,7 @@ import Form from "react-bootstrap/Form";
 import getUserInfo from "../../utilities/decodeJwt";
 import API_URL from "../../utilities/api";
 import { UserContext } from "../../App";
+import waterscentLogo from "../../assets/waterscent.png";
 
 const url = `${API_URL}/user/login`;
 
@@ -51,6 +52,24 @@ const Login = () => {
     fontWeight: "800",
     padding: "10px 22px",
   };
+  let authHeaderStyling = {
+    display: "grid",
+    justifyItems: "center",
+    gap: "10px",
+    marginBottom: "24px",
+    textAlign: "center",
+  };
+  let authLogoStyling = {
+    height: "92px",
+    width: "auto",
+    display: "block",
+  };
+  let authTitleStyling = {
+    color: "var(--ws-text-strong)",
+    fontSize: "30px",
+    fontWeight: "850",
+    margin: 0,
+  };
 
   const handleChange = ({ currentTarget: input }) => {
     setData({ ...data, [input.name]: input.value });
@@ -89,8 +108,12 @@ const Login = () => {
           <div
             className="row d-flex justify-content-center align-items-center h-100 "
             style={backgroundStyling}>
-            <div className="col-md-8 col-lg-6 col-xl-4 offset-xl-1">
+            <div className="col-md-8 col-lg-6 col-xl-4">
               <Form onSubmit={handleSubmit} style={formCardStyling}>
+                <div style={authHeaderStyling}>
+                  <img src={waterscentLogo} alt="WaterScent logo" style={authLogoStyling} />
+                  <h1 style={authTitleStyling}>WaterScent</h1>
+                </div>
                 <Form.Group className="mb-3" controlId="formBasicEmail">
                   <Form.Label style={labelStyling}>Username</Form.Label>
                   <Form.Control

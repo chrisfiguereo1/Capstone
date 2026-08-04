@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 
 const authenticateToken = require("../middleware/authenticateToken");
 const Fragrance = require("../models/fragrance");
+const FragranceRating = require("../models/fragranceRating");
 const Review = require("../models/review");
 const User = require("../models/userModel");
 
@@ -32,6 +33,71 @@ function validateReviewInput(body) {
   }
 
   return { rating, comment };
+}
+
+function validateFragranceRatingInput(body) {
+  const projection = Number(body.projection);
+  const longevity = Number(body.longevity);
+
+  if (
+    !Number.isFinite(projection) ||
+    !Number.isFinite(longevity) ||
+    projection < 0 ||
+    projection > 10 ||
+    longevity < 0 ||
+    longevity > 10
+  ) {
+    return {
+      message: "Projection and longevity must be numbers between 0 and 10.",
+    };
+  }
+
+  return { projection, longevity };
+}
+
+function formatFragranceRating(rating, currentUserId) {
+  if (!rating) return null;
+
+  const ratingObject = rating.toObject ? rating.toObject() : rating;
+  const userId = String(ratingObject.userId);
+
+  return {
+    _id: ratingObject._id,
+    fragranceId: ratingObject.fragranceId,
+    userId,
+    projection: ratingObject.projection,
+    longevity: ratingObject.longevity,
+    createdAt: ratingObject.createdAt,
+    updatedAt: ratingObject.updatedAt,
+    isOwner: Boolean(currentUserId && userId === String(currentUserId)),
+  };
+}
+
+async function buildFragranceRatingResponse(fragranceId, currentUserId) {
+  const ratings = await FragranceRating.find({ fragranceId }).lean();
+  const ratingCount = ratings.length;
+  const userRating = ratings.find(
+    (rating) => String(rating.userId) === String(currentUserId)
+  );
+
+  return {
+    ratingCount,
+    averageProjection: ratingCount
+      ? Math.round(
+          (ratings.reduce((sum, rating) => sum + rating.projection, 0) /
+            ratingCount) *
+            10
+        ) / 10
+      : null,
+    averageLongevity: ratingCount
+      ? Math.round(
+          (ratings.reduce((sum, rating) => sum + rating.longevity, 0) /
+            ratingCount) *
+            10
+        ) / 10
+      : null,
+    userRating: formatFragranceRating(userRating, currentUserId),
+  };
 }
 
 function formatReview(review, currentUserId) {
@@ -93,6 +159,67 @@ router.get("/fragrances/:fragranceId/reviews", async (req, res) => {
     res.status(500).json({ message: "Unable to load reviews." });
   }
 });
+
+router.get("/fragrances/:fragranceId/performance-ratings", async (req, res) => {
+  try {
+    const { fragranceId } = req.params;
+
+    if (!isValidObjectId(fragranceId)) {
+      return res.status(400).json({ message: "Invalid fragrance ID." });
+    }
+
+    const fragranceExists = await Fragrance.exists({ _id: fragranceId });
+    if (!fragranceExists) {
+      return res.status(404).json({ message: "Fragrance not found." });
+    }
+
+    res.status(200).json(await buildFragranceRatingResponse(fragranceId));
+  } catch (error) {
+    res.status(500).json({ message: "Unable to load ratings." });
+  }
+});
+
+router.post(
+  "/fragrances/:fragranceId/performance-ratings",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { fragranceId } = req.params;
+
+      if (!isValidObjectId(fragranceId)) {
+        return res.status(400).json({ message: "Invalid fragrance ID." });
+      }
+
+      const validation = validateFragranceRatingInput(req.body);
+      if (validation.message) {
+        return res.status(400).json({ message: validation.message });
+      }
+
+      const fragranceExists = await Fragrance.exists({ _id: fragranceId });
+      if (!fragranceExists) {
+        return res.status(404).json({ message: "Fragrance not found." });
+      }
+
+      const rating = await FragranceRating.findOneAndUpdate(
+        { fragranceId, userId: req.userId },
+        {
+          fragranceId,
+          userId: req.userId,
+          projection: validation.projection,
+          longevity: validation.longevity,
+        },
+        { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
+      );
+
+      res.status(200).json({
+        rating: formatFragranceRating(rating, req.userId),
+        summary: await buildFragranceRatingResponse(fragranceId, req.userId),
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Unable to save ratings." });
+    }
+  }
+);
 
 router.post(
   "/fragrances/:fragranceId/reviews",

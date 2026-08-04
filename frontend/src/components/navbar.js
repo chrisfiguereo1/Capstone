@@ -4,6 +4,7 @@ import Nav from 'react-bootstrap/Nav';
 import ReactNavbar from 'react-bootstrap/Navbar';
 import { useNavigate } from "react-router-dom";
 import { ThemeContext, UserContext } from "../App";
+import waterscentLogo from "../assets/waterscent.png";
 
 
 // Here, we display our Navbar
@@ -26,9 +27,10 @@ export default function Navbar() {
       variant={theme === "dark" ? "dark" : "light"}
       expand="md"
     >
-      <Container style={styles.container}>
+      <Container fluid style={styles.container}>
         <ReactNavbar.Brand href="/" style={styles.brand}>
           WaterScent
+          <img src={waterscentLogo} alt="WaterScent logo" style={styles.brandLogo} />
         </ReactNavbar.Brand>
 
         <ReactNavbar.Toggle aria-controls="waterscent-navbar" />
@@ -89,6 +91,8 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
+    paddingLeft: "24px",
+    paddingRight: "24px",
   },
 
   collapse: {
@@ -97,8 +101,17 @@ const styles = {
 
   brand: {
     color: "var(--ws-text)",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "10px",
     fontWeight: "800",
     letterSpacing: "0.4px",
+  },
+
+  brandLogo: {
+    height: "40px",
+    width: "auto",
+    display: "block",
   },
 
   links: {
