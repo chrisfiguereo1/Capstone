@@ -99,6 +99,7 @@ const FragranceDetailsPage = () => {
   const [saveSubmitting, setSaveSubmitting] = useState(false);
   const imageLookupStarted = useRef(false);
   const activeUser = user || getUserInfo();
+  const activeUserId = activeUser?.id;
 
   useEffect(() => {
     fetch(`${API_URL}/api/fragrances/${id}`)
@@ -187,7 +188,7 @@ const FragranceDetailsPage = () => {
   useEffect(() => {
     const accessToken = localStorage.getItem("accessToken");
 
-    if (!activeUser || !accessToken) {
+    if (!activeUserId || !accessToken) {
       setIsSaved(false);
       return;
     }
@@ -210,7 +211,7 @@ const FragranceDetailsPage = () => {
       .catch(() => {
         setIsSaved(false);
       });
-  }, [activeUser?.id, id]);
+  }, [activeUserId, id]);
 
   const requestFragranceImage = useCallback(async (replaceGenerated) => {
     setImageLoading(true);
