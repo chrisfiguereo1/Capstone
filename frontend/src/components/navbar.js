@@ -45,11 +45,11 @@ export default function Navbar() {
           </Nav.Link>
           {isLoggedIn ? (
             <>
-              <Nav.Link href="/saved" style={styles.link}>
-                Saved
-              </Nav.Link>
               <Nav.Link href="/privateUserProfile" style={styles.link}>
                 Profile
+              </Nav.Link>
+              <Nav.Link href="/saved" style={styles.link}>
+                Saved
               </Nav.Link>
               <button type="button" onClick={handleLogout} style={styles.navButton}>
                 Log Out
