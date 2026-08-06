@@ -27,6 +27,12 @@ const newUserSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    savedFragrances: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Fragrance",
+      },
+    ],
     date: {
       type: Date,
       default: Date.now,

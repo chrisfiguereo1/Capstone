@@ -95,6 +95,8 @@ const FragranceDetailsPage = () => {
   const [performanceSuccess, setPerformanceSuccess] = useState("");
   const [performanceForm, setPerformanceForm] = useState(DEFAULT_PERFORMANCE_FORM);
   const [performanceSubmitting, setPerformanceSubmitting] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [saveSubmitting, setSaveSubmitting] = useState(false);
   const imageLookupStarted = useRef(false);
   const activeUser = user || getUserInfo();
 
@@ -181,6 +183,34 @@ const FragranceDetailsPage = () => {
   useEffect(() => {
     loadPerformanceRatings();
   }, [loadPerformanceRatings]);
+
+  useEffect(() => {
+    const accessToken = localStorage.getItem("accessToken");
+
+    if (!activeUser || !accessToken) {
+      setIsSaved(false);
+      return;
+    }
+
+    fetch(`${API_URL}/api/saved-fragrances/ids`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Unable to load saved fragrances.");
+        }
+
+        return response.json();
+      })
+      .then((data) => {
+        setIsSaved((data.savedFragranceIds || []).includes(String(id)));
+      })
+      .catch(() => {
+        setIsSaved(false);
+      });
+  }, [activeUser?.id, id]);
 
   const requestFragranceImage = useCallback(async (replaceGenerated) => {
     setImageLoading(true);
@@ -445,6 +475,40 @@ const FragranceDetailsPage = () => {
       setPerformanceError(error.message || "Ratings could not be submitted.");
     } finally {
       setPerformanceSubmitting(false);
+    }
+  };
+
+  const toggleSavedFragrance = async () => {
+    const accessToken = localStorage.getItem("accessToken");
+
+    if (!accessToken) {
+      setImageMessage("Must log in to save fragrances.");
+      navigate("/login");
+      return;
+    }
+
+    setSaveSubmitting(true);
+    setImageMessage("");
+
+    try {
+      const response = await fetch(`${API_URL}/api/saved-fragrances/${id}`, {
+        method: isSaved ? "DELETE" : "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      const data = await readApiJson(response);
+
+      if (!response.ok) {
+        throw new Error(data.message || "Unable to update saved fragrances.");
+      }
+
+      setIsSaved(Boolean(data.saved));
+      setImageMessage(data.saved ? "Fragrance saved." : "Fragrance removed from saved.");
+    } catch (error) {
+      setImageMessage(error.message || "Unable to update saved fragrances.");
+    } finally {
+      setSaveSubmitting(false);
     }
   };
 
@@ -875,6 +939,14 @@ const FragranceDetailsPage = () => {
               >
                 {imageLoading ? "Finding..." : "Find real bottle image"}
               </Button>
+              <Button
+                type="button"
+                style={isSaved ? styles.savedButton : styles.imageButton}
+                disabled={saveSubmitting}
+                onClick={toggleSavedFragrance}
+              >
+                {saveSubmitting ? "Saving..." : isSaved ? "Saved" : "Save"}
+              </Button>
               {imageMessage && (
                 <p style={styles.imageMessage}>{imageMessage}</p>
               )}
@@ -1208,6 +1280,15 @@ const styles = {
     padding: "9px 16px",
     color: "var(--ws-text)",
     fontWeight: "700",
+  },
+
+  savedButton: {
+    background: "var(--ws-button-bg)",
+    border: "none",
+    borderRadius: "999px",
+    padding: "9px 16px",
+    color: "var(--ws-button-text)",
+    fontWeight: "800",
   },
 
   imageMessage: {

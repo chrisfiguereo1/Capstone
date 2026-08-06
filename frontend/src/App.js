@@ -14,6 +14,7 @@ import PrivateUserProfile from "./components/pages/privateUserProfilePage";
 import { createContext, useState, useEffect, useMemo } from "react";
 import getUserInfo from "./utilities/decodeJwt";
 import FragranceDetailsPage from "./components/pages/fragranceDetailsPage";
+import SavedFragrancesPage from "./components/pages/savedFragrancesPage";
 
 
 export const UserContext = createContext({ user: undefined, setUser: () => {} });
@@ -59,6 +60,7 @@ const App = () => {
           <Route exact path="/home" element={<HomePage />} />
           <Route exact path="/login" element={<Login />} />
           <Route exact path="/signup" element={<Signup />} />
+          <Route path="/saved" element={<SavedFragrancesPage />} />
           <Route path="/privateUserProfile" element={<PrivateUserProfile />} />
           <Route path="/fragrance/:id" element={<FragranceDetailsPage />} />
         </Routes>

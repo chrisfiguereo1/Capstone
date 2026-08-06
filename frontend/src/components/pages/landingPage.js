@@ -45,6 +45,8 @@ const Landingpage = () => {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [savedFragranceIds, setSavedFragranceIds] = useState(new Set());
+  const [saveError, setSaveError] = useState("");
   const { user, setUser } = useContext(UserContext);
   const latestSearchId = useRef(0);
   const searchAbortController = useRef(null);
@@ -92,7 +94,36 @@ const Landingpage = () => {
   useEffect(() => {
     if (!user) {
       setCurrentUser(null);
+      setSavedFragranceIds(new Set());
     }
+  }, [user]);
+
+  useEffect(() => {
+    const accessToken = localStorage.getItem("accessToken");
+
+    if (!accessToken) {
+      setSavedFragranceIds(new Set());
+      return;
+    }
+
+    fetch(`${API_URL}/api/saved-fragrances/ids`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Unable to load saved fragrances.");
+        }
+
+        return response.json();
+      })
+      .then((data) => {
+        setSavedFragranceIds(new Set(data.savedFragranceIds || []));
+      })
+      .catch((error) => {
+        console.error("Saved fragrance error:", error);
+      });
   }, [user]);
 
   const runSearch = useCallback(async (value) => {
@@ -173,6 +204,38 @@ const Landingpage = () => {
 
   const quickSearch = (value) => {
     setSearch(value);
+  };
+
+  const toggleSavedFragrance = async (event, fragranceId) => {
+    event.stopPropagation();
+    const accessToken = localStorage.getItem("accessToken");
+
+    if (!accessToken) {
+      navigate("/login");
+      return;
+    }
+
+    const fragranceIdString = String(fragranceId);
+    const isSaved = savedFragranceIds.has(fragranceIdString);
+
+    try {
+      setSaveError("");
+      const response = await fetch(`${API_URL}/api/saved-fragrances/${fragranceId}`, {
+        method: isSaved ? "DELETE" : "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Unable to update saved fragrances.");
+      }
+
+      setSavedFragranceIds(new Set(data.savedFragranceIds || []));
+    } catch (error) {
+      setSaveError(error.message || "Unable to update saved fragrances.");
+    }
   };
 
   return (
@@ -259,6 +322,7 @@ const Landingpage = () => {
         {fragrances.length > 0 && (
           <>
             <h2 style={styles.resultsTitle}>Search Results</h2>
+            {saveError && <p style={styles.error}>{saveError}</p>}
 
             <div style={styles.grid}>
               {fragrances.map((fragrance) => (
@@ -279,6 +343,22 @@ const Landingpage = () => {
                         style={styles.bottleImage}
                       />
                     </div>
+
+                    <Button
+                      type="button"
+                      style={
+                        savedFragranceIds.has(String(fragrance._id))
+                          ? styles.savedButton
+                          : styles.saveButton
+                      }
+                      onClick={(event) =>
+                        toggleSavedFragrance(event, fragrance._id)
+                      }
+                    >
+                      {savedFragranceIds.has(String(fragrance._id))
+                        ? "Saved"
+                        : "Save"}
+                    </Button>
 
                     <Card.Title style={styles.cardTitle}>
                       {fragrance.name || "Unknown Fragrance"}
@@ -483,6 +563,11 @@ const styles = {
     fontSize: "18px",
   },
 
+  error: {
+    color: "#d85c98",
+    fontWeight: "800",
+  },
+
   grid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
@@ -518,6 +603,26 @@ const styles = {
     display: "block",
     objectFit: "contain",
     filter: "drop-shadow(0 16px 18px rgba(43, 27, 19, 0.16))",
+  },
+
+  saveButton: {
+    background: "transparent",
+    border: "1px solid var(--ws-border)",
+    borderRadius: "999px",
+    color: "var(--ws-brown)",
+    fontWeight: "800",
+    padding: "7px 14px",
+    marginBottom: "14px",
+  },
+
+  savedButton: {
+    background: "var(--ws-button-bg)",
+    border: "none",
+    borderRadius: "999px",
+    color: "var(--ws-button-text)",
+    fontWeight: "800",
+    padding: "7px 14px",
+    marginBottom: "14px",
   },
 
   cardTitle: {
