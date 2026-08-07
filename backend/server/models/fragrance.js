@@ -31,6 +31,15 @@ const fragranceSchema = new mongoose.Schema(
       enum: ["pending", "matched", "review", "not_found"],
       default: "pending",
     },
+    transparentImage: { type: String, default: "" },
+    transparentImageUrl: { type: String, default: "" },
+    transparentImagePublicId: { type: String, default: "" },
+    transparentImageSource: { type: String, default: "" },
+    transparentImageStatus: {
+      type: String,
+      enum: ["pending", "processed", "review", "failed"],
+      default: "pending",
+    },
 
     source: { type: String, default: "fra_cleaned" },
   },

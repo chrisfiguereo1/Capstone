@@ -206,6 +206,28 @@ function sortFragranceResults(fragrances, query) {
     .map((result) => result.fragrance);
 }
 
+const favoriteFragranceIds = [
+  "6a28e95e06bfc109a654b19b",
+  "6a28e95e06bfc109a6547d2f",
+  "6a28e95e06bfc109a654a3ee",
+  "6a28e95e06bfc109a654b659",
+  "6a28e95e06bfc109a654b880",
+  "6a28e95e06bfc109a654b5cc",
+  "6a28e95e06bfc109a654b3bd",
+  "6a28e95e06bfc109a654b4b4",
+  "6a28e95e06bfc109a654af66",
+  "6a28e95e06bfc109a654b705",
+  "6a28e95e06bfc109a6549923",
+  "6a28e95e06bfc109a654b86c",
+  "6a28e95e06bfc109a654b7a9",
+  "6a28e95e06bfc109a654b782",
+  "6a28e95e06bfc109a654b805",
+  "6a28e95e06bfc109a654b73a",
+  "6a28e95d06bfc109a6545f74",
+  "6a28e95e06bfc109a654aa09",
+  "6a28e95e06bfc109a6547adf",
+];
+
 // SEARCH fragrances
 router.get("/search", async (req, res) => {
   try {
@@ -220,6 +242,22 @@ router.get("/search", async (req, res) => {
       .lean();
 
     res.status(200).json(sortFragranceResults(candidates, query));
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// GET favorite fragrances
+router.get("/favorites", async (req, res) => {
+  try {
+    const fragrances = await Fragrance.find({
+      _id: { $in: favoriteFragranceIds },
+    }).lean();
+    const favorites = favoriteFragranceIds
+      .map((id) => fragrances.find((fragrance) => String(fragrance._id) === id))
+      .filter(Boolean);
+
+    res.status(200).json(favorites);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -30,13 +30,39 @@ const DEFAULT_FRAGRANCE_IMAGE =
   `);
 
 const getFragranceImage = (fragrance) =>
-  fragrance?.imageUrl || fragrance?.image || DEFAULT_FRAGRANCE_IMAGE;
+  fragrance?.transparentImageUrl ||
+  fragrance?.transparentImage ||
+  fragrance?.imageUrl ||
+  fragrance?.image ||
+  DEFAULT_FRAGRANCE_IMAGE;
 
 const handleImageError = (event) => {
   event.currentTarget.onerror = null;
   event.currentTarget.src = DEFAULT_FRAGRANCE_IMAGE;
 };
 
+const FAN_FAVORITES_BUBBLE = "fan-favorites";
+const FAN_FAVORITE_IDS = [
+  "6a28e95e06bfc109a654b19b",
+  "6a28e95e06bfc109a6547d2f",
+  "6a28e95e06bfc109a654a3ee",
+  "6a28e95e06bfc109a654b659",
+  "6a28e95e06bfc109a654b880",
+  "6a28e95e06bfc109a654b5cc",
+  "6a28e95e06bfc109a654b3bd",
+  "6a28e95e06bfc109a654b4b4",
+  "6a28e95e06bfc109a654af66",
+  "6a28e95e06bfc109a654b705",
+  "6a28e95e06bfc109a6549923",
+  "6a28e95e06bfc109a654b86c",
+  "6a28e95e06bfc109a654b7a9",
+  "6a28e95e06bfc109a654b782",
+  "6a28e95e06bfc109a654b805",
+  "6a28e95e06bfc109a654b73a",
+  "6a28e95d06bfc109a6545f74",
+  "6a28e95e06bfc109a654aa09",
+  "6a28e95e06bfc109a6547adf",
+];
 const normalizeSearchTerm = (value) => value.trim().replace(/\s+/g, " ");
 
 const Landingpage = () => {
@@ -202,7 +228,52 @@ const Landingpage = () => {
     runSearch(search);
   };
 
+  const loadFanFavorites = async () => {
+    searchAbortController.current?.abort();
+    const requestId = latestSearchId.current + 1;
+    latestSearchId.current = requestId;
+
+    try {
+      setLoading(true);
+      setSearched(false);
+      setSaveError("");
+
+      const data = await Promise.all(
+        FAN_FAVORITE_IDS.map(async (id) => {
+          const response = await fetch(`${API_URL}/api/fragrances/${id}`);
+          const fragrance = await response.json();
+
+          if (!response.ok) {
+            throw new Error(fragrance.message || "Unable to load fan favorites.");
+          }
+
+          return fragrance;
+        })
+      );
+
+      if (latestSearchId.current === requestId) {
+        setFragrances(data);
+        setSearched(true);
+      }
+    } catch (error) {
+      console.error("Fan favorites error:", error);
+      if (latestSearchId.current === requestId) {
+        setFragrances([]);
+        setSearched(true);
+      }
+    } finally {
+      if (latestSearchId.current === requestId) {
+        setLoading(false);
+      }
+    }
+  };
+
   const quickSearch = (value) => {
+    if (value === FAN_FAVORITES_BUBBLE) {
+      loadFanFavorites();
+      return;
+    }
+
     setSearch(value);
   };
 
@@ -275,6 +346,13 @@ const Landingpage = () => {
 
           <div style={styles.quickLinks}>
             <span>Popular:</span>
+
+            <button
+              onClick={() => quickSearch(FAN_FAVORITES_BUBBLE)}
+              style={styles.quickBtn}
+            >
+              Fan Favorites
+            </button>
 
             <button onClick={() => quickSearch("dior")} style={styles.quickBtn}>
               Dior
