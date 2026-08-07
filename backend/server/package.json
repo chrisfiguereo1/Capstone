@@ -38,6 +38,7 @@
     "i": "^0.3.7",
     "jsonwebtoken": "^8.5.1",
     "mongoose": "^6.6.5",
+    "openai": "^4.104.0",
     "zod": "^3.19.1"
   },
   "devDependencies": {

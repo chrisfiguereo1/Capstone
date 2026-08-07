@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import axios from "axios";
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
@@ -15,6 +15,9 @@ const Login = () => {
   const [data, setData] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const location = useLocation();
+  const aiFinderRedirect = Boolean(location.state?.aiFinderRedirect);
+  const redirectTarget = aiFinderRedirect ? location.state?.from || "/ai-finder" : "/";
 
   let labelStyling = {
     color: "var(--ws-accent)",
@@ -70,6 +73,12 @@ const Login = () => {
     fontWeight: "850",
     margin: 0,
   };
+  let loginNoticeStyling = {
+    color: "var(--ws-muted)",
+    fontWeight: "700",
+    margin: "0 0 18px",
+    textAlign: "center",
+  };
 
   const handleChange = ({ currentTarget: input }) => {
     setData({ ...data, [input.name]: input.value });
@@ -77,9 +86,9 @@ const Login = () => {
 
   useEffect(() => {
     if (user) {
-      navigate("/");
+      navigate(redirectTarget);
     }
-  }, [user, navigate]);
+  }, [user, navigate, redirectTarget]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -89,7 +98,7 @@ const Login = () => {
       //store token in localStorage
       localStorage.setItem("accessToken", accessToken);
       setUser(getUserInfo());
-      navigate("/");
+      navigate(redirectTarget);
     } catch (error) {
       if (
         error.response &&
@@ -114,6 +123,12 @@ const Login = () => {
                   <img src={waterscentLogo} alt="WaterScent logo" style={authLogoStyling} />
                   <h1 style={authTitleStyling}>WaterScent</h1>
                 </div>
+                {aiFinderRedirect && (
+                  <p style={loginNoticeStyling}>
+                    Log in to use AI Finder and receive personalized AI
+                    fragrance recommendations.
+                  </p>
+                )}
                 <Form.Group className="mb-3" controlId="formBasicEmail">
                   <Form.Label style={labelStyling}>Username</Form.Label>
                   <Form.Control

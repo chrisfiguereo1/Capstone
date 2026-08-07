@@ -14,6 +14,7 @@ const fragranceRoutes = require("./routes/fragranceRoutes");
 const profileRoute = require("./routes/userProfile");
 const reviewRoutes = require("./routes/reviewRoutes");
 const savedFragranceRoutes = require("./routes/savedFragranceRoutes");
+const recommendationRoutes = require("./routes/recommendationRoutes");
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.use("/user", deleteUser);
 app.use("/user", profileRoute);
 app.use("/api", reviewRoutes);
 app.use("/api", savedFragranceRoutes);
+app.use("/api", recommendationRoutes);
 app.use("/api/fragrances", fragranceRoutes);
 
 app.listen(SERVER_PORT, () => {

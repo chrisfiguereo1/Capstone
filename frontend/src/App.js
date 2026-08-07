@@ -1,6 +1,6 @@
 import React from "react";
 // We use Route in order to define the different routes of our application
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import './css/card.css';
 import './index.css';
 
@@ -15,6 +15,7 @@ import { createContext, useState, useEffect, useMemo } from "react";
 import getUserInfo from "./utilities/decodeJwt";
 import FragranceDetailsPage from "./components/pages/fragranceDetailsPage";
 import SavedFragrancesPage from "./components/pages/savedFragrancesPage";
+import RecommendationEnginePage from "./components/pages/recommendationEnginePage";
 
 
 export const UserContext = createContext({ user: undefined, setUser: () => {} });
@@ -24,6 +25,23 @@ export const ThemeContext = createContext({
 });
 //test change
 //test again
+const RequireAuth = ({ children }) => {
+  const location = useLocation();
+  const accessToken = localStorage.getItem("accessToken");
+
+  if (!accessToken) {
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{ from: location.pathname, aiFinderRedirect: true }}
+      />
+    );
+  }
+
+  return children;
+};
+
 const App = () => {
   const [user, setUser] = useState();
   const [theme, setTheme] = useState(
@@ -60,6 +78,22 @@ const App = () => {
           <Route exact path="/home" element={<HomePage />} />
           <Route exact path="/login" element={<Login />} />
           <Route exact path="/signup" element={<Signup />} />
+          <Route
+            path="/ai-finder"
+            element={
+              <RequireAuth>
+                <RecommendationEnginePage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/recommendation-engine"
+            element={
+              <RequireAuth>
+                <RecommendationEnginePage />
+              </RequireAuth>
+            }
+          />
           <Route path="/saved" element={<SavedFragrancesPage />} />
           <Route path="/privateUserProfile" element={<PrivateUserProfile />} />
           <Route path="/fragrance/:id" element={<FragranceDetailsPage />} />

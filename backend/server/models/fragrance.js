@@ -40,6 +40,14 @@ const fragranceSchema = new mongoose.Schema(
       enum: ["pending", "processed", "review", "failed"],
       default: "pending",
     },
+    recommendationText: { type: String, default: "" },
+    embedding: {
+      type: [Number],
+      default: undefined,
+      select: false,
+    },
+    embeddingModel: { type: String, default: "" },
+    embeddingUpdatedAt: { type: Date, default: null },
 
     source: { type: String, default: "fra_cleaned" },
   },

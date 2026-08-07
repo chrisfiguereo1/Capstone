@@ -21,6 +21,17 @@ export default function Navbar() {
     navigate("/");
   };
 
+  const handleAiFinderClick = (event) => {
+    if (isLoggedIn) {
+      return;
+    }
+
+    event.preventDefault();
+    navigate("/login", {
+      state: { from: "/ai-finder", aiFinderRedirect: true },
+    });
+  };
+
   return (
     <ReactNavbar
       style={styles.navbar}
@@ -42,6 +53,9 @@ export default function Navbar() {
         <Nav style={styles.links}>
           <Nav.Link href="/" style={styles.link}>
             Home
+          </Nav.Link>
+          <Nav.Link href="/ai-finder" onClick={handleAiFinderClick} style={styles.link}>
+            AI Finder
           </Nav.Link>
           {isLoggedIn ? (
             <>
