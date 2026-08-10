@@ -5,6 +5,6 @@ const isLocalFrontend =
 
 const API_URL = isLocalFrontend
   ? "http://localhost:8081"
-  : process.env.REACT_APP_API_URL || "http://localhost:8081";
+  : process.env.REACT_APP_API_URL || "https://waterscent.onrender.com";
 
 export default API_URL;
