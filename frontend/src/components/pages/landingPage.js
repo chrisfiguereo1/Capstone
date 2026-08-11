@@ -42,11 +42,11 @@ const handleImageError = (event) => {
 };
 
 const FAN_FAVORITES_BUBBLE = "fan-favorites";
+const NAXOS_FAN_FAVORITE_ID = "6a28e95e06bfc109a654b782";
 const FAN_FAVORITE_IDS = [
   "6a28e95e06bfc109a654b19b",
   "6a28e95e06bfc109a6547d2f",
   "6a28e95e06bfc109a654a3ee",
-  "6a28e95e06bfc109a654b659",
   "6a28e95e06bfc109a654b880",
   "6a28e95e06bfc109a654b5cc",
   "6a28e95e06bfc109a654b3bd",
@@ -64,6 +64,8 @@ const FAN_FAVORITE_IDS = [
   "6a28e95e06bfc109a6547adf",
 ];
 const normalizeSearchTerm = (value) => value.trim().replace(/\s+/g, " ");
+const isNaxosFanFavorite = (fragrance) =>
+  String(fragrance?._id || "") === NAXOS_FAN_FAVORITE_ID;
 
 const Landingpage = () => {
   const [search, setSearch] = useState("");
@@ -418,7 +420,11 @@ const Landingpage = () => {
                         }`}
                         loading="lazy"
                         onError={handleImageError}
-                        style={styles.bottleImage}
+                        style={
+                          isNaxosFanFavorite(fragrance)
+                            ? { ...styles.bottleImage, ...styles.naxosBottleImage }
+                            : styles.bottleImage
+                        }
                       />
                     </div>
 
@@ -681,6 +687,11 @@ const styles = {
     display: "block",
     objectFit: "contain",
     filter: "drop-shadow(0 16px 18px rgba(43, 27, 19, 0.16))",
+  },
+
+  naxosBottleImage: {
+    filter:
+      "drop-shadow(0 16px 18px rgba(43, 27, 19, 0.18)) contrast(1.08) saturate(1.04)",
   },
 
   saveButton: {

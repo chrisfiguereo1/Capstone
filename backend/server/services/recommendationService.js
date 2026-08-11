@@ -2,8 +2,9 @@ const Fragrance = require("../models/fragrance");
 const { EMBEDDING_DIMENSIONS, createEmbedding } = require("./embeddingService");
 
 const VECTOR_SEARCH_INDEX = "fragrance_embedding_index";
-const DEFAULT_LIMIT = 20;
+const DEFAULT_LIMIT = 12;
 const DEFAULT_NUM_CANDIDATES = 200;
+const DEFAULT_SEARCH_LIMIT = 100;
 
 async function getSemanticRecommendations(query, options = {}) {
   const normalizedQuery = validateRecommendationQuery(query);
@@ -16,8 +17,15 @@ async function getSemanticRecommendations(query, options = {}) {
   }
 
   const limit = options.limit || DEFAULT_LIMIT;
-  const numCandidates = options.numCandidates || DEFAULT_NUM_CANDIDATES;
-  const searchLimit = Math.max(limit * 2, limit);
+  const excludeIds = normalizeExcludeIds(options.excludeIds);
+  const searchLimit = Math.max(
+    options.searchLimit || DEFAULT_SEARCH_LIMIT,
+    limit + excludeIds.size + limit
+  );
+  const numCandidates = Math.max(
+    options.numCandidates || DEFAULT_NUM_CANDIDATES,
+    searchLimit
+  );
 
   let results;
 
@@ -61,7 +69,7 @@ async function getSemanticRecommendations(query, options = {}) {
     throw createVectorSearchError(error);
   }
 
-  return rankRecommendationResults(results).slice(0, limit);
+  return selectRecommendationResults(rankRecommendationResults(results), excludeIds, limit);
 }
 
 function validateRecommendationQuery(query) {
@@ -86,6 +94,51 @@ function validateRecommendationQuery(query) {
   }
 
   return normalizedQuery;
+}
+
+function normalizeExcludeIds(excludeIds) {
+  if (!Array.isArray(excludeIds)) {
+    return new Set();
+  }
+
+  return new Set(
+    excludeIds
+      .map((id) => String(id || "").trim())
+      .filter(Boolean)
+  );
+}
+
+function selectRecommendationResults(results, excludeIds, limit) {
+  const seenIds = new Set();
+  const uniqueResults = [];
+
+  for (const fragrance of results) {
+    const fragranceId = String(fragrance._id);
+
+    if (seenIds.has(fragranceId)) {
+      continue;
+    }
+
+    seenIds.add(fragranceId);
+    uniqueResults.push(fragrance);
+  }
+
+  const unseenResults = uniqueResults.filter(
+    (fragrance) => !excludeIds.has(String(fragrance._id))
+  );
+
+  if (unseenResults.length >= limit) {
+    return unseenResults.slice(0, limit);
+  }
+
+  const selectedIds = new Set(
+    unseenResults.map((fragrance) => String(fragrance._id))
+  );
+  const fallbackResults = uniqueResults.filter(
+    (fragrance) => !selectedIds.has(String(fragrance._id))
+  );
+
+  return unseenResults.concat(fallbackResults).slice(0, limit);
 }
 
 function rankRecommendationResults(results) {

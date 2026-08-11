@@ -63,6 +63,8 @@ const promptChips = [
   },
 ];
 
+const RECOMMENDATION_LIMIT = 12;
+
 const getFragranceImage = (fragrance) =>
   fragrance?.transparentImageUrl ||
   fragrance?.transparentImage ||
@@ -74,6 +76,15 @@ const handleImageError = (event) => {
   event.currentTarget.onerror = null;
   event.currentTarget.src = DEFAULT_FRAGRANCE_IMAGE;
 };
+
+const getRecommendationIds = (recommendations) =>
+  recommendations
+    .map((fragrance) => fragrance?._id)
+    .filter(Boolean)
+    .map(String);
+
+const mergeRecommendationIds = (currentIds, recommendations) =>
+  Array.from(new Set([...currentIds, ...getRecommendationIds(recommendations)]));
 
 const getMatchPercent = (fragrance) => {
   const score = Number(fragrance?.rankingScore ?? fragrance?.similarityScore);
@@ -88,10 +99,15 @@ const getMatchPercent = (fragrance) => {
 const RecommendationEnginePage = () => {
   const [query, setQuery] = useState("");
   const [recommendations, setRecommendations] = useState([]);
+  const [originalSearchQuery, setOriginalSearchQuery] = useState("");
+  const [shownRecommendationIds, setShownRecommendationIds] = useState([]);
+  const [replacingIndexes, setReplacingIndexes] = useState({});
   const [resultCount, setResultCount] = useState(0);
   const [hasSearched, setHasSearched] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [refreshingRecommendations, setRefreshingRecommendations] = useState(false);
   const [error, setError] = useState("");
+  const [replaceError, setReplaceError] = useState("");
   const navigate = useNavigate();
 
   const handleSubmit = async (event) => {
@@ -106,7 +122,10 @@ const RecommendationEnginePage = () => {
     try {
       setLoading(true);
       setError("");
+      setReplaceError("");
       setHasSearched(false);
+      setReplacingIndexes({});
+      setShownRecommendationIds([]);
       const accessToken = localStorage.getItem("accessToken");
 
       if (!accessToken) {
@@ -123,7 +142,10 @@ const RecommendationEnginePage = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ query: trimmedQuery }),
+        body: JSON.stringify({
+          query: trimmedQuery,
+          limit: RECOMMENDATION_LIMIT,
+        }),
       });
       const data = await response.json();
 
@@ -144,8 +166,18 @@ const RecommendationEnginePage = () => {
         throw new Error(data.message || "Unable to load recommendations.");
       }
 
-      setRecommendations(Array.isArray(data.recommendations) ? data.recommendations : []);
-      setResultCount(Number.isFinite(Number(data.count)) ? Number(data.count) : 0);
+      const newRecommendations = Array.isArray(data.recommendations)
+        ? data.recommendations
+        : [];
+
+      setRecommendations(newRecommendations);
+      setShownRecommendationIds(getRecommendationIds(newRecommendations));
+      setResultCount(
+        Number.isFinite(Number(data.count))
+          ? Number(data.count)
+          : newRecommendations.length
+      );
+      setOriginalSearchQuery(trimmedQuery);
       setHasSearched(true);
     } catch (error) {
       console.error("Recommendation Engine error:", error);
@@ -155,6 +187,175 @@ const RecommendationEnginePage = () => {
       setError("We could not find recommendations right now. Please try again in a moment.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const refreshRecommendations = async () => {
+    if (!originalSearchQuery || loading || refreshingRecommendations) {
+      return;
+    }
+
+    const accessToken = localStorage.getItem("accessToken");
+
+    if (!accessToken) {
+      navigate("/login", {
+        state: { from: "/ai-finder", aiFinderRedirect: true },
+      });
+      return;
+    }
+
+    const requestUrl = `${API_URL}/api/recommendations`;
+
+    try {
+      setReplaceError("");
+      setRefreshingRecommendations(true);
+
+      const response = await fetch(requestUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          query: originalSearchQuery,
+          excludeIds: shownRecommendationIds,
+          limit: RECOMMENDATION_LIMIT,
+        }),
+      });
+      const data = await response.json();
+
+      if (response.status === 401) {
+        localStorage.removeItem("accessToken");
+        navigate("/login", {
+          state: { from: "/ai-finder", aiFinderRedirect: true },
+        });
+        return;
+      }
+
+      if (!response.ok) {
+        console.error("AI Finder refresh request failed:", {
+          url: requestUrl,
+          status: response.status,
+          response: data,
+        });
+        throw new Error(data.message || "Unable to refresh recommendations.");
+      }
+
+      const newRecommendations = Array.isArray(data.recommendations)
+        ? data.recommendations
+        : [];
+
+      setRecommendations(newRecommendations);
+      setShownRecommendationIds((previous) =>
+        mergeRecommendationIds(previous, newRecommendations)
+      );
+      setResultCount(
+        Number.isFinite(Number(data.count))
+          ? Number(data.count)
+          : newRecommendations.length
+      );
+    } catch (error) {
+      console.error("Recommendation refresh error:", error);
+      setReplaceError("Unable to load more recommendations right now.");
+    } finally {
+      setRefreshingRecommendations(false);
+    }
+  };
+
+  const replaceRecommendation = async (event, index) => {
+    event.stopPropagation();
+
+    if (!originalSearchQuery || replacingIndexes[index]) {
+      return;
+    }
+
+    const accessToken = localStorage.getItem("accessToken");
+
+    if (!accessToken) {
+      navigate("/login", {
+        state: { from: "/ai-finder", aiFinderRedirect: true },
+      });
+      return;
+    }
+
+    const excludeIds = Array.from(
+      new Set([...shownRecommendationIds, ...getRecommendationIds(recommendations)])
+    );
+    const requestUrl = `${API_URL}/api/recommendations`;
+
+    try {
+      setReplaceError("");
+      setReplacingIndexes((current) => ({ ...current, [index]: true }));
+
+      const response = await fetch(requestUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          query: originalSearchQuery,
+          excludeIds,
+          limit: 1,
+        }),
+      });
+      const data = await response.json();
+
+      if (response.status === 401) {
+        localStorage.removeItem("accessToken");
+        navigate("/login", {
+          state: { from: "/ai-finder", aiFinderRedirect: true },
+        });
+        return;
+      }
+
+      if (!response.ok) {
+        console.error("AI Finder replacement request failed:", {
+          url: requestUrl,
+          status: response.status,
+          response: data,
+        });
+        throw new Error(data.message || "Unable to replace recommendation.");
+      }
+
+      const replacement = Array.isArray(data.recommendations)
+        ? data.recommendations[0]
+        : null;
+
+      if (!replacement) {
+        throw new Error("No replacement recommendation was returned.");
+      }
+
+      setRecommendations((previous) => {
+        const visibleIds = new Set(
+          previous
+            .map((fragrance, fragranceIndex) =>
+              fragranceIndex === index ? null : fragrance?._id
+            )
+            .filter(Boolean)
+            .map(String)
+        );
+
+        if (visibleIds.has(String(replacement._id))) {
+          return previous;
+        }
+
+        const updated = [...previous];
+        updated[index] = replacement;
+        return updated;
+      });
+      setShownRecommendationIds((previous) =>
+        mergeRecommendationIds(previous, [replacement])
+      );
+    } catch (error) {
+      console.error("Recommendation replacement error:", error);
+      setReplaceError("Unable to replace that recommendation right now.");
+    } finally {
+      setReplacingIndexes((current) => {
+        const updated = { ...current };
+        delete updated[index];
+        return updated;
+      });
     }
   };
 
@@ -211,6 +412,7 @@ const RecommendationEnginePage = () => {
         )}
 
         {error && <p style={styles.error}>{error}</p>}
+        {replaceError && <p style={styles.error}>{replaceError}</p>}
 
         {!loading && hasSearched && !error && recommendations.length === 0 && (
           <p style={styles.status}>
@@ -223,12 +425,27 @@ const RecommendationEnginePage = () => {
           <section style={styles.resultsSection}>
             <div style={styles.resultsHeader}>
               <h2 style={styles.resultsTitle}>Recommended for you</h2>
-              <span style={styles.count}>{resultCount} matches</span>
+              <div style={styles.resultsActions}>
+                <span style={styles.count}>{resultCount} matches</span>
+                <Button
+                  type="button"
+                  disabled={refreshingRecommendations}
+                  onClick={refreshRecommendations}
+                  style={
+                    refreshingRecommendations
+                      ? { ...styles.moreButton, ...styles.disabledButton }
+                      : styles.moreButton
+                  }
+                >
+                  {refreshingRecommendations ? "Loading..." : "Try 12 More"}
+                </Button>
+              </div>
             </div>
 
             <div style={styles.grid}>
-              {recommendations.map((fragrance) => {
+              {recommendations.map((fragrance, index) => {
                 const matchPercent = getMatchPercent(fragrance);
+                const isReplacing = Boolean(replacingIndexes[index]);
 
                 return (
                   <Card
@@ -236,7 +453,23 @@ const RecommendationEnginePage = () => {
                     style={styles.card}
                     onClick={() => navigate(`/fragrance/${fragrance._id}`)}
                   >
-                    <Card.Body>
+                    <Card.Body style={styles.cardBody}>
+                      <button
+                        type="button"
+                        title="Try another fragrance"
+                        aria-label={`Try another fragrance instead of ${
+                          fragrance.name || "this fragrance"
+                        }`}
+                        disabled={isReplacing}
+                        onClick={(event) => replaceRecommendation(event, index)}
+                        style={
+                          isReplacing
+                            ? { ...styles.replaceButton, ...styles.replaceButtonDisabled }
+                            : styles.replaceButton
+                        }
+                      >
+                        {isReplacing ? "..." : "↻"}
+                      </button>
                       <div style={styles.imageWrap}>
                         <img
                           src={getFragranceImage(fragrance)}
@@ -412,6 +645,22 @@ const styles = {
     fontWeight: "800",
   },
 
+  resultsActions: {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+  },
+
+  moreButton: {
+    border: "none",
+    backgroundColor: "var(--ws-button-bg)",
+    color: "var(--ws-button-text)",
+    borderRadius: "999px",
+    padding: "8px 16px",
+    fontWeight: "800",
+  },
+
   grid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
@@ -425,6 +674,32 @@ const styles = {
     boxShadow: "var(--ws-soft-shadow)",
     overflow: "hidden",
     cursor: "pointer",
+  },
+
+  cardBody: {
+    position: "relative",
+  },
+
+  replaceButton: {
+    position: "absolute",
+    top: "12px",
+    right: "12px",
+    width: "34px",
+    height: "34px",
+    border: "1px solid var(--ws-border)",
+    borderRadius: "999px",
+    background: "var(--ws-card-solid)",
+    color: "var(--ws-brown)",
+    cursor: "pointer",
+    fontSize: "18px",
+    fontWeight: "800",
+    lineHeight: "1",
+    zIndex: 2,
+  },
+
+  replaceButtonDisabled: {
+    cursor: "not-allowed",
+    opacity: 0.58,
   },
 
   imageWrap: {
