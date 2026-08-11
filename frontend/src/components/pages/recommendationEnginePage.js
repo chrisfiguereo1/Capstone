@@ -116,7 +116,8 @@ const RecommendationEnginePage = () => {
         return;
       }
 
-      const response = await fetch(`${API_URL}/api/recommendations`, {
+      const requestUrl = `${API_URL}/api/recommendations`;
+      const response = await fetch(requestUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -135,6 +136,11 @@ const RecommendationEnginePage = () => {
       }
 
       if (!response.ok) {
+        console.error("AI Finder request failed:", {
+          url: requestUrl,
+          status: response.status,
+          response: data,
+        });
         throw new Error(data.message || "Unable to load recommendations.");
       }
 

@@ -20,6 +20,13 @@ router.post("/recommendations", authenticateToken, async (req, res) => {
   } catch (error) {
     const { statusCode, message, code } = getRecommendationErrorResponse(error);
 
+    console.error("Recommendation API error:", {
+      code,
+      message: error.message,
+      statusCode,
+      cause: error.cause?.message,
+    });
+
     res.status(statusCode).json({ message, code });
   }
 });
@@ -56,7 +63,7 @@ function getRecommendationErrorResponse(error) {
   if (errorMessage.includes("MongoDB Vector Search failed")) {
     return {
       statusCode: 503,
-      message: error.message,
+      message: "Recommendation vector search is unavailable.",
       code: "VECTOR_SEARCH_FAILED",
     };
   }
